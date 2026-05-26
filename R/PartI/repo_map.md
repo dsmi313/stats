@@ -9,9 +9,10 @@ mirrors. This table is the consolidated index.
 
 | Part I section | What you build | SCOBI source (file:lines) |
 | --- | --- | --- |
-| 1. Binomial window count | `pass` table with Week, SampleEndDate, SampleCount, SampleRate, GuidanceEfficiency, Collapse | `R/SCRAPI.r:196-247` |
-| 1. Binomial window count | `passdata = data.frame(Stratum, Tally, Ptrue)` | `R/SCRAPI.r:232` |
-| 2. MLE for a_d | `dailypass = Tally / Ptrue` (per-day MLE) | `R/SCRAPI.r:75` |
+| 2. MLE for a_d | smolt-trap `AllPrime` table with Strat, PGrp, SR (SCRAPI thetahat input) | `R/SCRAPI.r:284-313` |
+| 2. MLE for a_d | `dailypass = Tally / Ptrue` (per-day MLE; SMOLT trap, Ptrue includes GE) | `R/SCRAPI.r:75` |
+| 4. Parametric bootstrap | SCRAPI smolt `passdata = data.frame(Stratum, Tally, Ptrue)` | `R/SCRAPI.r:232` |
+| 4. Parametric bootstrap | SCRAPI `pass$true = SampleRate * GuidanceEfficiency` (smolt only) | `R/SCRAPI.r:227` |
 | 2. MLE for a_d | Inverse-SR weighting `mApply(1/SR, ..., sum)` | `R/SCRAPI.r:78, 94, 103` |
 | 2. MLE for a_d | `prop.table(Freqs, margin = ...)` | `R/SCRAPI.r:96, 105` |
 | 4. Parametric bootstrap | `cntstar <- rbinom(1, dailypass[i], Ptrue[i])` daily loop | `R/SCRAPI.r:141-145` |
@@ -30,7 +31,7 @@ mirrors. This table is the consolidated index.
 
 | Part I section | What you build | escapeLGD source (file:lines) |
 | --- | --- | --- |
-| 1. Binomial window count | `wc` tibble with sWeek, wc + expansion by wc_prop | `R/night_fall_reascend_wc_binom.R:130-150` |
+| 1. Binomial window count (adult) | `wc` tibble with sWeek, wc + expansion by wc_prop (no GE -- adults have one filter) | `R/night_fall_reascend_wc_binom.R:130-150` |
 | 3. Variance + delta method | `fallback_log_likelihood(pf, pre_f, dfr, df, dr, dt)` | `R/fallback_reascend_likelihood.R:13-15` |
 | 3. Variance + delta method | `gradient_fallback_log_likelihood()` analytical gradient | `R/fallback_reascend_likelihood.R:26-50` |
 | 3. Variance + delta method | `optimllh()` softmax wrapper | `R/fallback_reascend_likelihood.R:61-70` |
@@ -70,10 +71,10 @@ mirrors. This table is the consolidated index.
 | Symbol used in Part I | SCOBI/escapeLGD name | Meaning |
 | --- | --- | --- |
 | `a_d` | n/a (implicit) | truth: daytime adult escapement |
-| `r` | `SampleRate`, `wc_prop` | window sampling fraction |
-| `w` | `wc`, `SampleCount` | observed window count |
-| `e_sd` | `GuidanceEfficiency` | bypass guidance efficiency |
-| `p_sd` | `Ptrue`, `SR` | combined daily detection prob = SampleRate * GuidanceEfficiency |
+| `r` | `wc_prop` (escapeLGD); `SampleRate` (SCRAPI smolts) | sampling fraction; adults have only r, smolts have r and GE |
+| `w` | `wc` (escapeLGD adults); `SampleCount` (SCRAPI smolts) | observed count |
+| `e_sd` | `GuidanceEfficiency` (SCRAPI smolts only) | bypass guidance efficiency -- NOT used for adult window counts |
+| `p_sd` | `Ptrue`, `SR` (SCRAPI smolts) | smolt-trap combined detection = SampleRate * GuidanceEfficiency |
 | `p_n` | `p_night`, `nightPassage_rates` | nighttime passage proportion |
 | `p_f` | `p_fa`, `pf` | fallback proportion |
 | `c_sd` | `Tally` (in passdata) | daily trap count |

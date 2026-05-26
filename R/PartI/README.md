@@ -15,7 +15,7 @@ either repo and read it without translating notation in your head.
 
 | File | Topic | Mirrors |
 | --- | --- | --- |
-| `section01_binomial_window_count.R` | window count + SCRAPI `pass`/`passdata` table + escapeLGD `wc` tibble | SCRAPI.r:196-247; night_fall_reascend_wc_binom.R:130-150 |
+| `section01_binomial_window_count.R` | adult window count `a_d_hat = w / r` + escapeLGD `wc` tibble (no GE -- adults pass one filter, not two) | night_fall_reascend_wc_binom.R:130-150 |
 | `section02_mle_window_count.R` | binomial MLE + inverse-SR weighting (mApply 1/SR) | SCRAPI.r:74-126 |
 | `section03_variance_delta_method.R` | delta method + verbatim `fallback_log_likelihood`, `optimllh`, `gradient_fallback_log_likelihood`, optim call | fallback_reascend_likelihood.R (full); night_fall_reascend_wc_binom.R:71-75, 110 |
 | `section04_parametric_bootstrap.R` | bootsmolt daily-count layer (line-by-line); vectorized escapeLGD equivalent | SCRAPI.r:139-145; night_fall_reascend_wc_binom.R:145-151 |

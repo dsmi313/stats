@@ -61,11 +61,20 @@ fit <- optim(par = w_obs * 1.1, fn = neg_loglik_relaxed,
              method = "Brent", lower = w_obs, upper = 5000)
 cat("optim continuous-relaxation MLE =", round(fit$par, 2), "\n\n")
 
-# --- 4. The inverse-SR weighted estimator used inside thetahat() ------------
-# SCRAPI builds an "AllPrime" data frame with one row per sampled fish:
+# --- 4. Transition: from adult window count to SCRAPI's smolt trap ---------
+# Steps 1-3 above were about ADULT window counts: a_d_hat = w / r.
+# SCRAPI is the SMOLT estimator -- different fish, different filter.
+# A smolt at the bypass passes TWO filters:
+#   (a) trap rate    t_d  (was the gate open?)
+#   (b) guidance eff e_sd (did the fish route into the bypass?)
+# Combined detection probability p_sd = t_d * e_sd. This `SR` IS that
+# smolt-trap probability. The same binomial MLE applies: each sampled
+# fish counts as 1/SR fish in the run.
+#
+# SCRAPI's "AllPrime" data frame has one row per sampled SMOLT:
 #   columns: Strat (collapsed week), PGrp (e.g. GenStock), [SGrp,] SR
-# It then weighs each fish by 1/SR. We construct a 30-fish toy version.
-SR <- 5/6 * 0.45   # combined daily detection probability p_sd = t_d * e_sd
+# It weighs each fish by 1/SR (Hansen-Hurwitz / Horvitz-Thompson form).
+SR <- 5/6 * 0.45   # smolt-trap combined detection p_sd = t_d * e_sd
 AllPrime <- tibble(
   Strat = sample(c("S1", "S2", "S3"), size = 30,
                  replace = TRUE, prob = c(0.4, 0.4, 0.2)),
