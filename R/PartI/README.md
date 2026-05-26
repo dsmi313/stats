@@ -13,15 +13,41 @@ either repo and read it without translating notation in your head.
 
 ## Sections
 
-| File | Topic | Mirrors |
+Each section is split into MIT's problem/solution/test format:
+
+| Problems file | Solutions file | Test driver |
 | --- | --- | --- |
-| `section01_binomial_window_count.R` | adult window count `a_d_hat = w / r` + escapeLGD `wc` tibble (no GE -- adults pass one filter, not two) | night_fall_reascend_wc_binom.R:130-150 |
-| `section02_mle_window_count.R` | binomial MLE + inverse-SR weighting (mApply 1/SR) | SCRAPI.r:74-126 |
-| `section03_variance_delta_method.R` | delta method + verbatim `fallback_log_likelihood`, `optimllh`, `gradient_fallback_log_likelihood`, optim call | fallback_reascend_likelihood.R (full); night_fall_reascend_wc_binom.R:71-75, 110 |
-| `section04_parametric_bootstrap.R` | bootsmolt daily-count layer (line-by-line); vectorized escapeLGD equivalent | SCRAPI.r:139-145; night_fall_reascend_wc_binom.R:145-151 |
-| `section05_nonparametric_bootstrap.R` | weighted FishWH/FishDat resample, `thetahat_toy()`, Error 1 trigger | SCRAPI.r:128-189 |
-| `section06_stratification.R` | Cpattern + Collaps assignment loop + Error 3 trigger | SCRAPI.r:217, 254-269 |
-| `section07_multinomial_composition.R` | `softMax`, `PBT_log_likelihood`, `PBT_optimllh`, `PBT_expand_calc_MLE`, `PBT_expand_calc` (accounting), `PBT_breakdown` (bootstrap) | composition_estimation_utils.R:15-110, 440-486 |
+| `section01_binomial_window_count.R` | `section01_binomial_window_count-solutions.R` | `section01_binomial_window_count-test.R` |
+| `section02_mle_window_count.R` | `section02_mle_window_count-solutions.R` | `section02_mle_window_count-test.R` |
+| `section03_variance_delta_method.R` | `section03_variance_delta_method-solutions.R` | `section03_variance_delta_method-test.R` |
+| `section04_parametric_bootstrap.R` | `section04_parametric_bootstrap-solutions.R` | `section04_parametric_bootstrap-test.R` |
+| `section05_nonparametric_bootstrap.R` | `section05_nonparametric_bootstrap-solutions.R` | `section05_nonparametric_bootstrap-test.R` |
+| `section06_stratification.R` | `section06_stratification-solutions.R` | `section06_stratification-test.R` |
+| `section07_multinomial_composition.R` | `section07_multinomial_composition-solutions.R` | `section07_multinomial_composition-test.R` |
+
+Each problems file contains wrapper functions in MIT 18.05 format:
+
+```r
+sectionN_problem_Xx_fish <- function(args) {
+  cat("\n----------------------------------\n")
+  cat("Problem Xx: <title>\n")
+  # Arguments described above.
+  # Do not change the above code.
+  # ********* YOUR CODE HERE ***********
+}
+```
+
+Problems and what they mirror:
+
+| Section | Problems | Mirrors |
+| --- | --- | --- |
+| 1 | 1a single-day a_d_hat = w/r; 1b escapeLGD wc tibble; 1c vectorized parametric bootstrap; 1d replicated unbiasedness | `night_fall_reascend_wc_binom.R:130-150` |
+| 2 | 2a replicated MLE centering; 2b grid log-likelihood; 2c optim continuous relaxation; 2d inverse-SR weighting (smolt-trap) | `SCRAPI.r:74-126` |
+| 3 | 3a layer-1 variance; 3b layer-2 variance; 3c delta method; 3d fallback joint MLE (escapeLGD verbatim); 3e nightFall bootstrap | `fallback_reascend_likelihood.R`; `night_fall_reascend_wc_binom.R:71-110` |
+| 4 | 4a bootsmolt daily-loop (verbatim); 4b vectorized escapeLGD; 4c coverage check; 4d plot bootstrap distribution | `SCRAPI.r:139-145`; `night_fall_reascend_wc_binom.R:150` |
+| 5 | 5a toy data frames; 5b FishWH resample (verbatim); 5c FishDat resample (verbatim); 5d thetahat_toy; 5e full bootsmolt; 5f Error 1 trigger | `SCRAPI.r:74-126, 128-189` |
+| 6 | 6a simulate shifting p_n; 6b Cpattern + pooled vs stratified; 6c Collaps loop (verbatim); 6d Error 3 trigger; 6e parametric bootstrap CI | `SCRAPI.r:217, 254-269` |
+| 7 | 7a softMax; 7b PBT_log_likelihood; 7c PBT_optimllh; 7d PBT_expand_calc_MLE; 7e PBT_expand_calc (TotEx); 7f PBT_breakdown | `composition_estimation_utils.R:15-110, 440-486` |
 
 See `repo_map.md` for the consolidated line-by-line index.
 
@@ -54,11 +80,16 @@ the studio-to-section map.
 
 ## Running
 
+The workflow mirrors MIT 18.05 studios:
+
 ```r
-# from the repository root
+# Option A -- work on the stubs yourself
 source("R/PartI/section01_binomial_window_count.R")
-source("R/PartI/section02_mle_window_count.R")
-# ...
+source("R/PartI/section01_binomial_window_count-test.R")
+
+# Option B -- run the reference answers
+source("R/PartI/section01_binomial_window_count-solutions.R")
+source("R/PartI/section01_binomial_window_count-test.R")
 ```
 
-Required packages: `ggplot2`, `dplyr`, `purrr`, `tibble`, `tidyr`.
+Required packages: `ggplot2`, `dplyr`, `tibble`. Section 6 also uses `dplyr`.
