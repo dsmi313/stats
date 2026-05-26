@@ -1,153 +1,210 @@
-# Section 5 - Nonparametric bootstrap and distributional diagnostic
+# Section 5 - Nonparametric bootstrap: bootsmolt's weighted stratum resample
 # ---------------------------------------------------------------
-# Parametric bootstrap (Section 4) assumes a model. Nonparametric
-# bootstrap resamples the actual data. EASE uses nonparametric for
-# composition uncertainty. This section also builds the dispersion
-# diagnostic that will be run on real MY2024 counts in Section 14.
+# Goal: rebuild the within-stratum weighted resample loop that SCRAPI's
+# bootsmolt() uses for FishWH and FishDat, then assemble a toy
+# `thetahat_toy()` whose signature matches SCRAPI's thetahat(). After this
+# section you can read every line of bootsmolt() and explain Error 1
+# (theta.b dimension mismatch) from first principles.
 #
-# Reading: PLAN.md Section 5, MIT Class 23a/23b, Class 24, R Studio 10.
+# Repo pointer (SCOBI/R/SCRAPI.r, bootsmolt function):
+#   line 131:  theta.b <- matrix(numeric(p*B), ncol = p)
+#   lines 148-157:  weighted resample of FishWH by stratum (Rear weights)
+#   lines 159-169:  weighted resample of FishDat by stratum (SR weights)
+#   line 173:  eststar <- thetahat(dailyStar, RearStar, indivStar)
+#   lines 175-176:  theta.b[b, ] <- c(eststar[[1]], t(eststar[[4]]),
+#                                     eststar[[5]], as.vector(t(eststar[[6]])))
+#
+# Repo pointer (SCOBI/R/SCRAPI.r, thetahat function):
+#   lines 74-126:  the full function we mirror in `thetahat_toy()` below.
 
 library(ggplot2)
 library(dplyr)
 library(purrr)
-library(tidyr)
+library(tibble)
 
 set.seed(2026)
 
 plots_dir <- file.path("docs", "figures", "PartI")
 if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
 
-# --- 1. Toy trap sample with stock labels ----------------------------------
-# PTAGIS-style 6-letter stock codes.
+# --- 1. Build toy RearData, FishWH, AllPrime, passdata ---------------------
+# Each toy data frame matches the column names SCRAPI uses internally.
 stocks <- c("LOSALM", "CHMBLN", "IMNAHA")
-true_p <- c(LOSALM = 0.50, CHMBLN = 0.35, IMNAHA = 0.15)
-n_trap <- 30L
-fish   <- sample(stocks, size = n_trap, replace = TRUE, prob = true_p)
-cat("Observed trap composition:\n"); print(table(fish)); cat("\n")
+strats <- c("S1", "S2", "S3")
+nfish  <- 90L
 
-# --- 2. Nonparametric bootstrap of stock proportions -----------------------
-np_boot_props <- function(labels, B = 5000) {
-  n     <- length(labels)
-  uniq  <- sort(unique(labels))
-  draws <- replicate(B, {
-    boot <- sample(labels, size = n, replace = TRUE)
-    vapply(uniq, function(s) mean(boot == s), numeric(1))
-  })
-  cis <- apply(draws, 1, quantile, c(0.025, 0.975))
-  list(point = vapply(uniq, function(s) mean(labels == s), numeric(1)),
-       cis   = cis,
-       draws = draws)
-}
-
-np <- np_boot_props(fish, B = 5000)
-cat("Nonparametric 95% CIs for stock proportions:\n")
-print(round(rbind(point = np$point, np$cis), 3)); cat("\n")
-
-# --- 3. Parametric (multinomial) bootstrap for comparison -----------------
-param_boot_props <- function(labels, B = 5000) {
-  uniq  <- sort(unique(labels))
-  p_hat <- vapply(uniq, function(s) mean(labels == s), numeric(1))
-  draws <- rmultinom(B, size = length(labels), prob = p_hat) / length(labels)
-  cis   <- apply(draws, 1, quantile, c(0.025, 0.975))
-  list(point = p_hat, cis = cis)
-}
-
-pp <- param_boot_props(fish, B = 5000)
-cat("Parametric (multinomial) 95% CIs for the same data:\n")
-print(round(rbind(point = pp$point, pp$cis), 3)); cat("\n")
-
-# --- 4. Stratified nonparametric bootstrap ---------------------------------
-# Two time strata; resample within each; combine using stratum weights.
-strat_boot <- function(labels, strata, weights, B = 2000) {
-  uniq_s <- sort(unique(labels))
-  draws  <- replicate(B, {
-    pooled <- map_dfr(unique(strata), function(stratum) {
-      idx  <- which(strata == stratum)
-      boot <- sample(labels[idx], size = length(idx), replace = TRUE)
-      tibble(stratum = stratum,
-             stock   = uniq_s,
-             p       = vapply(uniq_s, function(s) mean(boot == s), numeric(1)),
-             w       = weights[[stratum]])
-    })
-    pooled |>
-      group_by(stock) |>
-      summarise(p = sum(p * w) / sum(w), .groups = "drop") |>
-      pull(p)
-  })
-  cis <- apply(draws, 1, quantile, c(0.025, 0.975))
-  list(point = rowMeans(draws), cis = cis)
-}
-
-stratum  <- c(rep("early", 15), rep("late", 15))
-weights  <- list(early = 0.6, late = 0.4)
-strat    <- strat_boot(fish, stratum, weights, B = 1500)
-cat("Stratified nonparametric 95% CIs (early/late weights 0.6/0.4):\n")
-print(round(rbind(point = strat$point, strat$cis), 3)); cat("\n")
-
-# --- 5. Edge case: rare stock in a small stratum ---------------------------
-# Replace the late stratum with 5 fish, all LOSALM. Watch IMNAHA CI collapse.
-small_labels <- c(fish[1:15], rep("LOSALM", 5))
-small_strata <- c(rep("early", 15), rep("late", 5))
-small_weights <- list(early = 0.75, late = 0.25)
-strat_small  <- strat_boot(small_labels, small_strata, small_weights, B = 1500)
-cat("Edge case (late stratum has 5 fish, all LOSALM):\n")
-print(round(rbind(point = strat_small$point, strat_small$cis), 3))
-cat("Notice IMNAHA CI is degenerate -> this is the same failure mode\n")
-cat("that triggers the SCRAPI theta.b dimension error (Diagnostic Error 1).\n\n")
-
-# --- 6. Distributional diagnostic: compare Binomial to overdispersed -------
-ndays      <- 30L
-trials     <- 500L
-p_true     <- 5/6
-mu         <- trials * p_true
-bin_counts <- rbinom(ndays, size = trials, prob = p_true)
-
-target_var <- 4 * trials * p_true * (1 - p_true)  # 4x the Binomial variance
-nb_size    <- mu^2 / (target_var - mu)
-nb_counts  <- rnbinom(ndays, mu = mu, size = nb_size)
-
-diag_tbl <- tibble(
-  source = rep(c("Binomial", "Overdispersed (NB)"), each = ndays),
-  count  = c(bin_counts, nb_counts)
+# AllPrime mirrors SCRAPI's AllPrime: per-fish stratum + primary group + SR
+AllPrime <- tibble(
+  Strat = sample(strats, size = nfish, replace = TRUE,
+                 prob = c(0.4, 0.4, 0.2)),
+  PGrp  = sample(stocks, size = nfish, replace = TRUE,
+                 prob = c(0.55, 0.35, 0.10)),
+  SR    = 5/6 * 0.45                       # realized sample rate (t_d * e_sd)
 )
-cat("Mean and variance by source:\n")
-print(diag_tbl |>
-        group_by(source) |>
-        summarise(mean = mean(count), var = var(count), .groups = "drop"))
+
+# RearData mirrors SCRAPI's RearData: per-fish rear type + stratum + True rate
+RearData <- AllPrime |>
+  mutate(Rear   = sample(c("W", "HNC"), n(), replace = TRUE,
+                         prob = c(0.7, 0.3)),
+         Stratum = Strat,
+         True    = SR) |>
+  select(Rear, Stratum, True)
+
+# passdata mirrors SCRAPI's passdata: collapsed stratum, daily Tally, Ptrue
+ndays <- 30L
+passdata <- tibble(
+  Stratum = rep(strats, each = ndays / 3),
+  Tally   = rbinom(ndays, size = 200L, prob = 5/6 * 0.45),
+  Ptrue   = 5/6 * 0.45
+)
+
+# --- 2. Implement the bootsmolt weighted resample VERBATIM -----------------
+# SCRAPI.r lines 148-157 (FishWH resample) and 159-169 (FishDat resample)
+# are reproduced below as a function we can call B times.
+resample_fishWH <- function(FishWH, strats) {
+  H <- 0
+  for (h in strats) {
+    justwk <- FishWH[FishWH$Stratum == h, ]
+    nwk    <- nrow(justwk)
+    if (nwk == 0L) next
+    i      <- sample.int(nwk, replace = TRUE, prob = unlist(justwk$True))
+    wkstar <- justwk[i, ]
+    if (H == 0) { WHstar <- wkstar; H <- 1
+    } else        { WHstar <- rbind(WHstar, wkstar) }
+  }
+  WHstar
+}
+resample_fishDat <- function(FishDat, strats) {
+  H <- 0
+  for (h in strats) {
+    justwk <- FishDat[FishDat$Strat == h, ]
+    nwk    <- nrow(justwk)
+    if (nwk == 0L) next
+    i      <- sample.int(nwk, replace = TRUE, prob = unlist(justwk$SR))
+    wkstar <- justwk[i, ]
+    if (H == 0) { DatStar <- wkstar; H <- 1
+    } else        { DatStar <- rbind(DatStar, wkstar) }
+  }
+  DatStar
+}
+
+# --- 3. Toy thetahat() matching SCRAPI's signature -------------------------
+# Inputs (matching SCRAPI lines 74-87):
+#   passage  : data.frame(Stratum, Tally, Ptrue)
+#   RearDat  : data.frame(Rear, Stratum, True)
+#   Fish     : data.frame(Strat, PGrp, SR)
+# Output  : list(TotalWild, WildStrata, Primaryproportions, Primaryests)
+thetahat_toy <- function(passage, RearDat, Fish, Pgrps, strats) {
+  dailypass  <- passage$Tally / passage$Ptrue
+  bystrata   <- tapply(dailypass, passage$Stratum, sum)
+
+  HNCWstrat  <- tapply(1 / RearDat$True,
+                       list(RearDat$Stratum, RearDat$Rear), sum)
+  HNCWstrat[is.na(HNCWstrat)] <- 0
+  HNCWprop   <- prop.table(HNCWstrat, margin = 1)
+  PWild      <- HNCWprop[, "W"]
+  WildStrata <- PWild * bystrata
+  TotalWild  <- sum(WildStrata)
+
+  Primarystrata <- tapply(1 / Fish$SR,
+                          list(factor(Fish$Strat, levels = strats),
+                               factor(Fish$PGrp,  levels = Pgrps)), sum)
+  Primarystrata[is.na(Primarystrata)] <- 0
+  Primaryproportions <- prop.table(Primarystrata, margin = 1)
+  Primaryproportions[is.na(Primaryproportions)] <- 0
+  Primaryests <- as.vector(t(Primaryproportions) %*% as.vector(WildStrata))
+  names(Primaryests) <- Pgrps
+
+  list(TotalWild           = TotalWild,
+       WildStrata          = WildStrata,
+       Primaryproportions  = Primaryproportions,
+       Primaryests         = Primaryests)
+}
+
+est <- thetahat_toy(passdata, RearData, AllPrime, Pgrps = stocks, strats = strats)
+cat("Point estimates from thetahat_toy():\n")
+cat("  TotalWild         =", round(est$TotalWild), "\n")
+cat("  WildStrata        ="); print(round(est$WildStrata))
+cat("  Primaryests       ="); print(round(est$Primaryests))
 cat("\n")
 
-# --- 7. Chi-squared GoF diagnostic (reusable) -----------------------------
-# Use as a screening diagnostic, not a strict hypothesis test.
-bin_diagnostic <- function(counts, n_trials, p) {
-  rng        <- min(counts):max(counts)
-  observed   <- as.numeric(table(factor(counts, levels = rng)))
-  expected_p <- dbinom(rng, size = n_trials, prob = p)
-  fit <- chisq.test(x = observed,
-                    p = expected_p / sum(expected_p),
-                    rescale.p = TRUE,
-                    simulate.p.value = TRUE, B = 2000)
-  list(chi = unname(fit$statistic), p_value = fit$p.value)
+# --- 4. Full bootsmolt loop on toy data ------------------------------------
+B <- 1000L
+p <- 1L + length(stocks)
+theta.b <- matrix(numeric(p * B), ncol = p)
+for (b in seq_len(B)) {
+  if (b == 1) {
+    dailyStar <- passdata
+    RearStar  <- RearData
+    indivStar <- AllPrime
+  } else {
+    # Daily count layer (Section 4)
+    cntstar <- vapply(seq_len(nrow(passdata)), function(i) {
+      if (round(passdata$Tally[i] / passdata$Ptrue[i]) == 0) 0L
+      else rbinom(1, round(passdata$Tally[i] / passdata$Ptrue[i]),
+                  passdata$Ptrue[i])
+    }, integer(1))
+    dailyStar <- data.frame(Stratum = passdata$Stratum,
+                            Tally   = cntstar,
+                            Ptrue   = passdata$Ptrue)
+    RearStar  <- resample_fishWH(RearData, strats)
+    indivStar <- resample_fishDat(AllPrime, strats)
+  }
+  eststar <- thetahat_toy(dailyStar, RearStar, indivStar,
+                          Pgrps = stocks, strats = strats)
+  theta.b[b, ] <- c(eststar$TotalWild, eststar$Primaryests)
 }
 
-diag_bin <- bin_diagnostic(bin_counts, trials, p_true)
-diag_nb  <- bin_diagnostic(nb_counts,  trials, p_true)
-cat("Chi-squared GoF against Binomial(500, 5/6):\n")
-cat("  Binomial sample      : chi =", round(diag_bin$chi, 2),
-    "  p =", round(diag_bin$p_value, 3), "\n")
-cat("  Overdispersed sample : chi =", round(diag_nb$chi, 2),
-    "  p =", round(diag_nb$p_value, 3), "\n\n")
+# SCRAPI.r lines 181-186: extract 95% CIs per column of theta.b
+CI <- t(apply(theta.b, 2, quantile, c(0.025, 0.975)))
+rownames(CI) <- c("WildSmolts", stocks)
+colnames(CI) <- c("LCI", "UCI")
+cat("Bootstrap 95% CIs (theta.b columns):\n")
+print(round(CI))
+cat("\n")
 
-# --- 8. Plot dispersion of the two samples --------------------------------
-p_disp <- ggplot(diag_tbl, aes(count, fill = source)) +
-  geom_histogram(bins = 25, alpha = 0.7, position = "identity") +
-  geom_vline(xintercept = mu, colour = "black", linetype = "dashed") +
-  labs(title = "Section 5 - Dispersion diagnostic",
-       subtitle = "Same mean; NB has fatter tails",
-       x = "daily count", y = "Replicates", fill = NULL)
-ggsave(file.path(plots_dir, "section05_dispersion.png"), p_disp,
+# --- 5. Trigger Error 1 deliberately ---------------------------------------
+# Add a 4th rare stock with only 2 fish, all in one stratum. When a
+# bootstrap iteration loses that stock entirely from a stratum, the
+# `Primaryproportions` row collapses and `theta.b[b, ] <- c(...)` recycles.
+rare_stocks <- c(stocks, "LOCLWR")
+AllPrime_rare <- bind_rows(
+  AllPrime,
+  tibble(Strat = c("S1", "S1"), PGrp = c("LOCLWR", "LOCLWR"),
+         SR = 5/6 * 0.45)
+)
+
+cat("Attempting bootstrap with a rare stock that lives in 1 stratum only:\n")
+caught <- tryCatch({
+  for (b in seq_len(50L)) {
+    indivStar <- resample_fishDat(AllPrime_rare, strats)
+    eststar <- thetahat_toy(passdata, RearData, indivStar,
+                            Pgrps = rare_stocks, strats = strats)
+    # Try to stuff into a p = 1 + 4 = 5-wide row
+    theta.b_rare <- numeric(5L)
+    theta.b_rare[] <- c(eststar$TotalWild, eststar$Primaryests)
+  }
+  "no error fired (lucky bootstrap path)"
+}, error = function(e) conditionMessage(e),
+   warning = function(w) conditionMessage(w))
+cat("  Caught:", caught, "\n\n")
+cat("  This is exactly the SCRAPI Error 1 mechanism described in PLAN.md.\n")
+cat("  Fix: drop LOCLWR or move it to its own analysis before SCRAPI().\n\n")
+
+# --- 6. Plot the theta.b column for TotalWild ------------------------------
+p_total <- ggplot(tibble(total = theta.b[, 1]), aes(total)) +
+  geom_histogram(bins = 60, fill = "steelblue", colour = "white") +
+  geom_vline(xintercept = CI[1, ], colour = "firebrick",
+             linewidth = 1, linetype = "dashed") +
+  labs(title = "Section 5 - Bootstrap TotalWild (theta.b column 1)",
+       subtitle = "Mirrors SCRAPI.r line 175",
+       x = "TotalWild", y = "Bootstrap draws")
+ggsave(file.path(plots_dir, "section05_theta_b_total.png"), p_total,
        width = 6, height = 4, dpi = 150)
 
-# Section 5 payoff ----------------------------------------------------------
-# Stratified nonparametric resampling is the skeleton of bootsmolt().
-# bin_diagnostic() is the function used on real MY2024 w and p_n samples
-# in Section 14 to flag any overdispersion for the Section 21 memo.
+# --- 7. End-of-section pointers --------------------------------------------
+# You can now read:
+#   SCOBI/R/SCRAPI.r lines 128-189  (full bootsmolt function)
+#   SCOBI/R/SCRAPI.r lines  74-126  (full thetahat function)
+# and recognize every line. The pre-run checklist in PLAN.md (Error 1) now
+# describes exactly what you just triggered.

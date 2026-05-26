@@ -1,52 +1,64 @@
-# Part I - Building EASE from Scratch
+# Part I - Building EASE from Scratch (targeted at SCOBI + escapeLGD)
 
-Seven sections plus a fish-themed port of every MIT 18.05 R studio. By the
-end of Part I you can simulate every binomial estimator EASE uses, build
-CIs for them by parametric and nonparametric bootstrap, and explain why
-three strata schemes exist.
+Seven sections that build the data structures and statistical machinery
+used in two production repositories:
 
-## Sections (the learning-plan spine)
+- https://github.com/mackerman44/SCOBI  (SCRAPI, thetahat, bootsmolt)
+- https://github.com/delomast/escapeLGD (PBT_log_likelihood, fallback,
+  nighttime/window-count binomials)
 
-Each section file is self-contained and saves its figures under
-`docs/figures/PartI/`. Run from the repository root.
+Every section script keeps the production variable names and reproduces
+key code blocks verbatim wherever possible. After Part I you can open
+either repo and read it without translating notation in your head.
 
-| File | Topic | Maps to PLAN.md |
+## Sections
+
+| File | Topic | Mirrors |
 | --- | --- | --- |
-| `section01_binomial_window_count.R` | window count W ~ Binomial(a_d, r); a_d_hat = w/r | Section 1 |
-| `section02_mle_window_count.R` | binomial MLE, likelihood surface, probability != likelihood | Section 2 |
-| `section03_variance_delta_method.R` | variance propagation, delta method, joint estimator | Section 3 |
-| `section04_parametric_bootstrap.R` | parametric bootstrap CI + coverage check | Section 4 |
-| `section05_nonparametric_bootstrap.R` | nonparametric + stratified resample + chi-square diagnostic | Section 5 |
-| `section06_stratification.R` | pooled vs stratified estimators; ">=100 wild fish" rule | Section 6 |
-| `section07_multinomial_composition.R` | multinomial MLE; D&H skeleton (tagged + untagged) | Section 7 |
+| `section01_binomial_window_count.R` | window count + SCRAPI `pass`/`passdata` table + escapeLGD `wc` tibble | SCRAPI.r:196-247; night_fall_reascend_wc_binom.R:130-150 |
+| `section02_mle_window_count.R` | binomial MLE + inverse-SR weighting (mApply 1/SR) | SCRAPI.r:74-126 |
+| `section03_variance_delta_method.R` | delta method + verbatim `fallback_log_likelihood`, `optimllh`, `gradient_fallback_log_likelihood`, optim call | fallback_reascend_likelihood.R (full); night_fall_reascend_wc_binom.R:71-75, 110 |
+| `section04_parametric_bootstrap.R` | bootsmolt daily-count layer (line-by-line); vectorized escapeLGD equivalent | SCRAPI.r:139-145; night_fall_reascend_wc_binom.R:145-151 |
+| `section05_nonparametric_bootstrap.R` | weighted FishWH/FishDat resample, `thetahat_toy()`, Error 1 trigger | SCRAPI.r:128-189 |
+| `section06_stratification.R` | Cpattern + Collaps assignment loop + Error 3 trigger | SCRAPI.r:217, 254-269 |
+| `section07_multinomial_composition.R` | `softMax`, `PBT_log_likelihood`, `PBT_optimllh`, `PBT_expand_calc_MLE`, `PBT_expand_calc` (accounting), `PBT_breakdown` (bootstrap) | composition_estimation_utils.R:15-110, 440-486 |
 
-## MIT studio ports
+See `repo_map.md` for the consolidated line-by-line index.
 
-`mit_studios/` contains fish-themed translations of all 10 MIT 18.05
-(Spring 2022) R studios. Each MIT studio wrapper function
-(`studioN_problem_Ka()`) is renamed `studioN_problem_Ka_fish()` and
-operates on the EASE/SCRAPI domain. See `mit_studios/README.md` for the
-full studio-to-section map.
+## MIT studio ports (supplemental)
 
-Highlights:
+`mit_studios/` contains fish-themed translations of every MIT 18.05 R
+studio (1 through 10). They are pedagogical companions to the seven
+sections above and not the primary path. See `mit_studios/README.md` for
+the studio-to-section map.
 
-- Studio 1 -> PIT-tag collision probability (birthday paradox in fish form)
-- Studio 4 -> two trap supervisors sharing shifts (covariance from
-  shared signal)
-- Studio 5 -> sequential GSI markers updating posterior on stock identity
-  (Bayesian version of the iterative replacement in PLAN.md Section 10)
-- Studio 6 -> sonar-tagged fish position from Cauchy bank-projections
-- Studio 10 -> bootstrap CI coverage on log-normal smolt lengths (the
-  realistic stress test referenced in PLAN.md Sections 5 and 14)
+## Recommended workflow
+
+1. Clone the production repos locally:
+
+   ```bash
+   git clone https://github.com/mackerman44/SCOBI ../SCOBI
+   git clone https://github.com/delomast/escapeLGD ../escapeLGD
+   ```
+
+2. Work through one section. Each prints results to the console and
+   saves figures under `docs/figures/PartI/`.
+
+3. Open the cited source file in parallel and walk through the lines
+   listed in the "Repo pointer" header of the section script.
+
+4. When you can read those lines without surprise, move to the next
+   section. By the end of Section 7 you should be able to follow
+   `SCRAPI()` end-to-end and recognize every helper called inside
+   `escapeLGD::HNC_expand()`.
 
 ## Running
 
 ```r
 # from the repository root
 source("R/PartI/section01_binomial_window_count.R")
-source("R/PartI/mit_studios/studio01_pit_tag_collisions.R")
+source("R/PartI/section02_mle_window_count.R")
+# ...
 ```
 
-Required packages: `ggplot2`, `dplyr`, `purrr`, `tidyr`. Studio 10
-optionally uses `matrixStats` for column-wise statistics (falls back to
-`apply` if not installed).
+Required packages: `ggplot2`, `dplyr`, `purrr`, `tibble`, `tidyr`.

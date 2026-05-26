@@ -1,78 +1,134 @@
-# Section 6 - Stratification: when pooling lies
+# Section 6 - Stratification, Collaps assignment, and SCRAPI Error 3
 # ---------------------------------------------------------------
-# If a parameter shifts across the run, a pooled estimate is biased.
-# Stratifying removes the bias at the cost of wider CIs. This justifies
-# the three EASE strata schemes and the ">=100 wild fish" rule from SCOBI.
+# Goal: build SCRAPI's collapsing pattern from raw weeks and reproduce the
+# date-by-date Collaps assignment that triggers Error 3 when trap and FPC
+# date tables disagree.
 #
-# Reading: PLAN.md Section 6, MIT Class 17a (Frequentist School),
-# Class 22 (Confidence Intervals), R Studio 8 and 9.
+# Repo pointers (SCOBI/R/SCRAPI.r):
+#   line 217:  Cpattern <- unique(cbind(pass[, PASSstrat],
+#                                       pass[, PASScollaps]))
+#   lines 254-259 (the "All$Collaps" assignment loop that fires Error 3):
+#     All$Collaps <- numeric(nAll)
+#     AllDates    <- unique(All[, FISHdate])
+#     for (d in AllDates) {
+#       CollStrat <- pass[which(pass[, PASSdate] == d), PASScollaps]
+#       All$Collaps[which(All[, FISHdate] == d)] <- CollStrat
+#     }
 
 library(ggplot2)
 library(dplyr)
 library(purrr)
-library(tidyr)
+library(tibble)
 
 set.seed(2026)
 
 plots_dir <- file.path("docs", "figures", "PartI")
 if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
 
-# --- 1. Simulate a season with shifting p_n --------------------------------
-# Early half: low nighttime passage. Late half: high.
-n_days       <- 60L
+# --- 1. Build a season with p_n shifting halfway through -------------------
+# Mirrors PLAN.md Section 6: pooling lies when p_n is time-varying.
+n_weeks      <- 8L
+days_per_wk  <- 7L
+ndays        <- n_weeks * days_per_wk
 p_n_early    <- 0.10
 p_n_late     <- 0.40
-a_d_per_day  <- 100L     # daytime escapement per day (known for clarity)
-d_a_per_day  <- 30L      # PIT-tagged adults per day in the proportion sample
+a_d_per_day  <- 100L
+d_a_per_day  <- 30L
 
-season <- tibble(day = seq_len(n_days),
-                 stratum  = ifelse(day <= n_days / 2, "early", "late"),
-                 p_n_true = ifelse(stratum == "early", p_n_early, p_n_late))
-season <- season |>
-  mutate(a_d      = a_d_per_day,
-         d_n      = rbinom(n(), size = d_a_per_day, prob = p_n_true),
-         p_n_hat  = d_n / d_a_per_day,
-         a_t_true = a_d / (1 - p_n_true))
-
+season <- tibble(
+  Week    = rep(seq_len(n_weeks), each = days_per_wk),
+  Collaps = rep(c("EARLY", "LATE"),                # 2-stratum collapse
+                each = ndays / 2),
+  p_n_true = ifelse(Collaps == "EARLY", p_n_early, p_n_late),
+  a_d      = a_d_per_day,
+  d_n      = rbinom(ndays, d_a_per_day, p_n_true),
+  p_n_hat  = d_n / d_a_per_day,
+  a_t_true = a_d / (1 - p_n_true)
+)
 truth_total <- sum(season$a_t_true)
 
-# --- 2. Pooled estimate (biased) -------------------------------------------
+# SCRAPI line 217 reproduced verbatim:
+Cpattern <- unique(cbind(season$Week, season$Collaps))
+cat("Cpattern (SCRAPI line 217):\n")
+print(Cpattern); cat("\n")
+
+# --- 2. Pooled vs stratified estimator -------------------------------------
 p_n_pooled  <- sum(season$d_n) / (nrow(season) * d_a_per_day)
 a_t_pooled  <- sum(season$a_d) / (1 - p_n_pooled)
 
-# --- 3. Stratified estimate (unbiased) -------------------------------------
 strat_summary <- season |>
-  group_by(stratum) |>
+  group_by(Collaps) |>
   summarise(p_n_hat = sum(d_n) / (n() * d_a_per_day),
-            a_d_sum = sum(a_d),
-            .groups = "drop") |>
+            a_d_sum = sum(a_d), .groups = "drop") |>
   mutate(a_t = a_d_sum / (1 - p_n_hat))
 a_t_stratified <- sum(strat_summary$a_t)
 
-cat("Pooled vs stratified vs truth:\n")
-cat("  truth         =", round(truth_total), "\n")
-cat("  pooled  a_t   =", round(a_t_pooled),
+cat("Truth        =", round(truth_total), "\n")
+cat("Pooled       =", round(a_t_pooled),
     "   bias =", round(a_t_pooled - truth_total), "\n")
-cat("  stratified    =", round(a_t_stratified),
+cat("Stratified   =", round(a_t_stratified),
     "   bias =", round(a_t_stratified - truth_total), "\n\n")
 
-# --- 4. CI width via parametric bootstrap: pooled vs stratified -----------
+# --- 3. Reproduce the SCRAPI Collaps assignment loop -----------------------
+# SCRAPI lines 254-259 - we replicate the loop on toy trap data.
+nFish <- 200L
+fish_weeks <- sample(season$Week, size = nFish, replace = TRUE)
+All <- tibble(
+  CollectionDate = format(as.Date("2024-04-01") + (fish_weeks - 1L) * 7L,
+                          "%m/%d/%Y"),
+  GenStock       = sample(c("LOSALM", "CHMBLN", "IMNAHA"),
+                          size = nFish, replace = TRUE)
+)
+pass <- season |>
+  mutate(SampleEndDate = format(as.Date("2024-04-01") + (Week - 1L) * 7L,
+                                "%m/%d/%Y")) |>
+  group_by(Week, Collaps, SampleEndDate) |>
+  summarise(SampleCount = sum(a_d), .groups = "drop")
+
+# Verbatim port of SCRAPI lines 254-259:
+nAll <- nrow(All)
+All$Collaps <- character(nAll)
+AllDates    <- unique(All$CollectionDate)
+for (d in AllDates) {
+  CollStrat <- pass$Collaps[which(pass$SampleEndDate == d)]
+  All$Collaps[which(All$CollectionDate == d)] <- CollStrat
+}
+cat("First 5 rows of All with Collaps assigned (mirrors SCRAPI line 258):\n")
+print(head(All, 5)); cat("\n")
+
+# --- 4. Trigger Error 3 deliberately ---------------------------------------
+# Error 3 fires when a trap date matches multiple FPC rows so CollStrat has
+# length > 1. We duplicate one row of `pass` and rerun the loop.
+pass_bad <- bind_rows(pass, pass[1, ])
+cat("Attempting Collaps assignment with a duplicated FPC date:\n")
+caught <- tryCatch({
+  for (d in AllDates) {
+    CollStrat <- pass_bad$Collaps[which(pass_bad$SampleEndDate == d)]
+    All$Collaps[which(All$CollectionDate == d)] <- CollStrat
+  }
+  "no error fired"
+}, warning = function(w) conditionMessage(w),
+   error   = function(e) conditionMessage(e))
+cat("  Caught:", caught, "\n")
+cat("  This is the SCRAPI Error 3 mechanism (Collaps recycling).\n")
+cat("  Fix: ensure 1:1 date correspondence between trap data and FPC.\n\n")
+
+# --- 5. Parametric-bootstrap CI for pooled vs stratified -------------------
 boot_season <- function(season, B, stratified) {
   d_a <- 30L
   estimates <- numeric(B)
   if (stratified) {
     p_strata <- season |>
-      group_by(stratum) |>
+      group_by(Collaps) |>
       summarise(p_n_hat = sum(d_n) / (n() * d_a), .groups = "drop")
     for (b in seq_len(B)) {
       smpl <- season |>
-        left_join(p_strata, by = "stratum") |>
-        mutate(d_n_b = rbinom(n(), size = d_a, prob = p_n_hat))
+        left_join(p_strata, by = "Collaps", suffix = c("", ".s")) |>
+        mutate(d_n_b = rbinom(n(), size = d_a, prob = p_n_hat.s))
       strat_b <- smpl |>
-        group_by(stratum) |>
+        group_by(Collaps) |>
         summarise(p_n_b   = sum(d_n_b) / (n() * d_a),
-                  a_d_sum = sum(a_d),
-                  .groups = "drop")
+                  a_d_sum = sum(a_d), .groups = "drop")
       estimates[b] <- sum(strat_b$a_d_sum / (1 - strat_b$p_n_b))
     }
   } else {
@@ -87,76 +143,32 @@ boot_season <- function(season, B, stratified) {
 }
 
 set.seed(2026)
-boot_pool  <- boot_season(season, B = 1500, stratified = FALSE)
-boot_strat <- boot_season(season, B = 1500, stratified = TRUE)
-
+bp <- boot_season(season, B = 1500L, stratified = FALSE)
+bs <- boot_season(season, B = 1500L, stratified = TRUE)
 cat("Parametric bootstrap CIs (B = 1500):\n")
-cat("  pooled      CI =", round(boot_pool$ci),
-    "  width =", round(diff(boot_pool$ci)), "\n")
-cat("  stratified  CI =", round(boot_strat$ci),
-    "  width =", round(diff(boot_strat$ci)), "\n\n")
+cat("  pooled      = [", round(bp$ci[1]), ",", round(bp$ci[2]), "]",
+    "   width =", round(diff(bp$ci)), "\n")
+cat("  stratified  = [", round(bs$ci[1]), ",", round(bs$ci[2]), "]",
+    "   width =", round(diff(bs$ci)), "\n\n")
 
-# --- 5. Stratum sample-size sweep -----------------------------------------
-# How wide is the stratified CI as the late stratum PIT sample shrinks?
-sweep_sizes <- c(5L, 10L, 20L, 50L)
-set.seed(2026)
-sweep <- map_dfr(sweep_sizes, function(d_a_late) {
-  s2 <- season |>
-    mutate(d_a_eff = ifelse(stratum == "late", d_a_late, 30L),
-           d_n     = rbinom(n(), size = d_a_eff, prob = p_n_true),
-           p_n_hat = d_n / d_a_eff)
-  draws <- numeric(1000L)
-  p_strata <- s2 |>
-    group_by(stratum) |>
-    summarise(p_n_hat = sum(d_n) / sum(d_a_eff), .groups = "drop")
-  for (b in seq_along(draws)) {
-    sb <- s2 |>
-      left_join(p_strata, by = "stratum", suffix = c("", ".s")) |>
-      mutate(d_n_b = rbinom(n(), size = d_a_eff, prob = p_n_hat.s))
-    strat_b <- sb |>
-      group_by(stratum) |>
-      summarise(p_n_b   = sum(d_n_b) / sum(d_a_eff),
-                a_d_sum = sum(a_d),
-                .groups = "drop")
-    draws[b] <- sum(strat_b$a_d_sum / (1 - strat_b$p_n_b))
-  }
-  ci <- quantile(draws, c(0.025, 0.975))
-  tibble(d_a_late = d_a_late,
-         lower    = unname(ci[1]),
-         upper    = unname(ci[2]),
-         width    = unname(diff(ci)))
-})
-
-cat("Stratified CI width as the late-stratum PIT sample shrinks:\n")
-print(sweep); cat("\n")
-
-p_sweep <- ggplot(sweep, aes(d_a_late, width)) +
-  geom_line(colour = "steelblue") +
-  geom_point(size = 2) +
-  labs(title = "Section 6 - Stratified CI width vs late-stratum sample",
-       x = "d_a in late stratum (per day)",
-       y = "Bootstrap 95% CI width")
-ggsave(file.path(plots_dir, "section06_strat_sweep.png"), p_sweep,
-       width = 6, height = 4, dpi = 150)
-
-# --- 6. Plot the pooled bias and stratified spread ------------------------
+# --- 6. Visualize pooled bias vs stratified spread -------------------------
 draws_tbl <- bind_rows(
-  tibble(method = "pooled",     a_t = boot_pool$draws),
-  tibble(method = "stratified", a_t = boot_strat$draws)
+  tibble(method = "pooled",     a_t = bp$draws),
+  tibble(method = "stratified", a_t = bs$draws)
 )
-
 p_strat <- ggplot(draws_tbl, aes(a_t, fill = method)) +
   geom_histogram(bins = 50, alpha = 0.7, position = "identity") +
-  geom_vline(xintercept = truth_total,
-             colour = "black", linewidth = 1) +
-  labs(title = "Section 6 - Pooling vs stratification",
+  geom_vline(xintercept = truth_total, colour = "black", linewidth = 1) +
+  labs(title = "Section 6 - Pooled vs stratified estimator",
        subtitle = "Solid line = season truth",
        x = expression(hat(a)[t]^{season}),
        y = "Replicates", fill = NULL)
 ggsave(file.path(plots_dir, "section06_pool_vs_strat.png"), p_strat,
        width = 6, height = 4, dpi = 150)
 
-# Section 6 payoff ----------------------------------------------------------
-# The ">=100 wild fish per stratum" rule used in SCOBI is derived from this
-# bias-variance tradeoff. After Section 6 you can defend the rule from
-# first principles instead of citing the SOP.
+# --- 7. End-of-section pointers --------------------------------------------
+# You can now read:
+#   SCOBI/R/SCRAPI.r lines 215-225 (collapsing pattern, Cpattern)
+#   SCOBI/R/SCRAPI.r lines 254-269 (Collaps and true-rate assignment loops)
+# Both of these are where Error 3 originates. The pre-run checklist in
+# PLAN.md (no extra FPC rows; 1:1 date correspondence) is now self-evident.

@@ -1,49 +1,43 @@
-# Section 2 - MLE for the window-count estimator
+# Section 2 - MLE and the inverse-sample-rate weighting in SCRAPI
 # ---------------------------------------------------------------
-# MIT 18.05 Class 10b (Maximum Likelihood Estimates) + R Studio 2.
-# We treat the daytime escapement a_d as the parameter to estimate
-# from a single observed window count w. The Binomial MLE
-# a_d_hat = w / r is verified three ways:
-#   (a) replicate() simulation centering on the truth,
-#   (b) grid evaluation of the log-likelihood,
-#   (c) optim() on a continuous relaxation via lgamma.
+# Goal: connect the Binomial MLE  a_d_hat = w / r  to the inverse-
+# sample-rate weighting that SCRAPI's thetahat() uses everywhere.
 #
-# Reading: PLAN.md Section 2, MIT Class 10a/10b, R Studio 2.
-# StatQuest: "In Statistics, Probability is not Likelihood" - the
-# probability-vs-likelihood plot below illustrates that distinction.
+# Repo pointer (SCOBI/R/SCRAPI.r, thetahat function):
+#   line 75:  dailypass <- passage$Tally / passage$Ptrue
+#                                ^ this IS the per-day MLE
+#   line 78:  HNCWstrat <- mApply(1/RearDat$True, list(RearDat$Stratum,
+#                                                      RearDat$Rear), sum)
+#   line 94:  Primarystrata <- mApply(1/Fish$SR, list(Fish$Strat,
+#                                                     Fish$PGrp), sum)
+#                                ^ each fish counts as 1/SR (Hansen-Hurwitz)
+#
+# Reading sample: SCOBI/R/SCRAPI.r lines 74-126 (the full thetahat function)
 
 library(ggplot2)
 library(dplyr)
 library(purrr)
+library(tibble)
 
 set.seed(2026)
 
 plots_dir <- file.path("docs", "figures", "PartI")
 if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
 
+# --- 1. The closed-form MLE -------------------------------------------------
 a_d_true <- 500L
 r_sample <- 5/6
 
-# --- 1. Repeated estimates: a_d_hat centers on the truth -------------------
-nreps <- 1000L
-estimates <- map_dbl(seq_len(nreps),
-                     ~ rbinom(1, a_d_true, r_sample) / r_sample)
-
-cat("Replicated MLE check:\n")
-cat("  mean(a_d_hat) =", round(mean(estimates), 1),
-    "  (target", a_d_true, ")\n")
-cat("  sd(a_d_hat)   =", round(sd(estimates), 1), "\n\n")
-
-# --- 2. Log-likelihood for a single observed w -----------------------------
-# Given one observed w, view L(a_d) = P(W = w | a_d, r) as a function of a_d.
 w_obs    <- rbinom(1, a_d_true, r_sample)
+a_d_hat  <- w_obs / r_sample
+cat("w =", w_obs, "  a_d_hat = w / r =", a_d_hat,
+    "  (this is SCRAPI line 75)\n\n")
+
+# --- 2. Verify via grid evaluation of the log-likelihood --------------------
 a_d_grid <- seq(max(w_obs, 1), 700, by = 1L)
 loglik   <- dbinom(w_obs, size = a_d_grid, prob = r_sample, log = TRUE)
 mle_grid <- a_d_grid[which.max(loglik)]
-
-cat("Observed window count w =", w_obs, "\n")
-cat("  closed-form MLE w/r  =", w_obs / r_sample, "\n")
-cat("  grid MLE             =", mle_grid, "\n\n")
+cat("Grid MLE =", mle_grid, "   closed-form w/r =", w_obs / r_sample, "\n\n")
 
 p_lik <- ggplot(tibble(a_d = a_d_grid, loglik = loglik),
                 aes(a_d, loglik)) +
@@ -52,58 +46,72 @@ p_lik <- ggplot(tibble(a_d = a_d_grid, loglik = loglik),
              colour = "firebrick", linewidth = 1, linetype = "dashed") +
   labs(title = "Section 2 - Binomial log-likelihood for a_d",
        subtitle = paste0("w = ", w_obs, ", r = 5/6; peak at w/r"),
-       x = expression(a[d]),
-       y = expression(log~L(a[d])))
+       x = expression(a[d]), y = expression(log~L(a[d])))
 ggsave(file.path(plots_dir, "section02_loglik.png"), p_lik,
        width = 6, height = 4, dpi = 150)
 
-# --- 3. optim() on a continuous relaxation ---------------------------------
-# dbinom requires integer size; use lgamma to relax over real-valued a_d.
+# --- 3. optim() on a continuous relaxation (lgamma) -------------------------
 neg_loglik_relaxed <- function(a_d, w, r) {
   if (a_d < w) return(Inf)
   -(lgamma(a_d + 1) - lgamma(w + 1) - lgamma(a_d - w + 1) +
     w * log(r) + (a_d - w) * log(1 - r))
 }
-
-fit <- optim(par = w_obs * 1.1,
-             fn  = neg_loglik_relaxed,
+fit <- optim(par = w_obs * 1.1, fn = neg_loglik_relaxed,
              w = w_obs, r = r_sample,
              method = "Brent", lower = w_obs, upper = 5000)
-cat("optim continuous-relaxation MLE =", round(fit$par, 2),
-    "  (target w/r =", w_obs / r_sample, ")\n\n")
+cat("optim continuous-relaxation MLE =", round(fit$par, 2), "\n\n")
 
-# --- 4. Probability is not likelihood --------------------------------------
-# Probability view: fix a_d, sweep observable w (the pmf).
-# Likelihood view: fix w, sweep parameter a_d.
-pmf_tbl <- tibble(w = 380:460,
-                  density = dbinom(380:460, size = a_d_true, prob = r_sample),
-                  view = "Probability: P(W | a_d = 500)")
-lik_tbl <- tibble(a_d = a_d_grid,
-                  density = exp(loglik - max(loglik)),
-                  view = "Likelihood: L(a_d | w obs)")
-
-# Each panel has its own x-axis (w vs a_d) so the two views stay separate.
-panel_tbl <- bind_rows(
-  pmf_tbl |> rename(x = w),
-  lik_tbl |> rename(x = a_d)
+# --- 4. The inverse-SR weighted estimator used inside thetahat() ------------
+# SCRAPI builds an "AllPrime" data frame with one row per sampled fish:
+#   columns: Strat (collapsed week), PGrp (e.g. GenStock), [SGrp,] SR
+# It then weighs each fish by 1/SR. We construct a 30-fish toy version.
+SR <- 5/6 * 0.45   # combined daily detection probability p_sd = t_d * e_sd
+AllPrime <- tibble(
+  Strat = sample(c("S1", "S2", "S3"), size = 30,
+                 replace = TRUE, prob = c(0.4, 0.4, 0.2)),
+  PGrp  = sample(c("LOSALM", "CHMBLN", "IMNAHA"),
+                 size = 30, replace = TRUE,
+                 prob = c(0.5, 0.35, 0.15)),
+  SR    = SR
 )
 
-p_pl <- ggplot(panel_tbl, aes(x, density)) +
-  geom_line(colour = "steelblue", linewidth = 1) +
-  facet_wrap(~ view, scales = "free", ncol = 1) +
-  labs(title = "Section 2 - Probability is not Likelihood",
-       subtitle = "Same dbinom() viewed two ways",
-       x = NULL, y = "density / relative likelihood")
-ggsave(file.path(plots_dir, "section02_prob_vs_lik.png"), p_pl,
-       width = 6, height = 6, dpi = 150)
+# Reproduce SCRAPI line 94 verbatim with base R `tapply` standing in for plyr::mApply
+Primarystrata <- tapply(1 / AllPrime$SR,
+                        list(Strat = AllPrime$Strat,
+                             PGrp  = AllPrime$PGrp),
+                        sum)
+Primarystrata[is.na(Primarystrata)] <- 0
+cat("Primarystrata (inverse-SR weighted counts per stratum x stock):\n")
+print(round(Primarystrata, 1))
+cat("\n")
 
-# --- 5. Bias and SE summary ------------------------------------------------
-true_var <- a_d_true * (1 - r_sample) / r_sample^2
-cat("Sanity check on Var(a_d_hat):\n")
-cat("  closed form Var(W/r)  =", round(true_var, 2),
-    "  -> sd =", round(sqrt(true_var), 2), "\n")
-cat("  empirical sd          =", round(sd(estimates), 2), "\n")
+# SCRAPI line 96: column-normalize to get per-stock proportions
+Primaryproportions <- prop.table(Primarystrata, margin = 1)
+cat("Primaryproportions (row-normalized within stratum):\n")
+print(round(Primaryproportions, 3))
+cat("\n")
 
-# Section 2 payoff ----------------------------------------------------------
-# The same likelihood machinery scales to the nighttime PIT proportion,
-# trap detection probability, and PBT tag rates in Sections 3 and 7-10.
+# --- 5. Show that 1/SR weighting equals MLE expansion -----------------------
+# If we observed n fish in a sample of N true passing fish, each fish has
+# sampling probability SR. The MLE for N is sum(1/SR) over sampled fish,
+# which is exactly the inverse-sample-rate sum used in SCRAPI.
+n_fish_sampled <- nrow(AllPrime)
+N_hat          <- sum(1 / AllPrime$SR)
+cat("Inverse-SR expansion: ", n_fish_sampled, "fish sampled at SR =",
+    round(SR, 3), "  ->  N_hat =", round(N_hat, 1), "\n")
+cat("Equivalent to MLE for a binomial detection process.\n\n")
+
+# --- 6. Replicate to confirm the estimator is unbiased ----------------------
+nreps <- 1000L
+estimates <- map_dbl(seq_len(nreps),
+                     ~ rbinom(1, a_d_true, r_sample) / r_sample)
+cat("Across", nreps, "replicates: mean(a_d_hat) =",
+    round(mean(estimates), 1), "  (target", a_d_true, ")\n")
+
+# --- 7. End-of-section pointers ---------------------------------------------
+# Once Section 2 makes sense you should be able to read every line of
+#   SCOBI/R/SCRAPI.r:74-126 (thetahat function)
+# without surprise. In particular:
+#   - dailypass / Ptrue is the daily MLE
+#   - mApply(1/SR, ...) is the inverse-sample-rate (Hansen-Hurwitz) sum
+#   - prop.table(Freqs, margin = ...) turns weighted counts into proportions
