@@ -5,6 +5,8 @@ This folder contains R code and analysis scripts for the `stats` repository.
 Organize code by part and section:
 
 - `R/PartI`: binomial simulation, bootstrap, and EASE building blocks.
+  Includes `R/PartI/mit_studios/`, a fish-themed port of every MIT 18.05
+  R studio (1 through 10). See `R/PartI/README.md` for the section map.
 - `R/PartII`: Delomas & Hess likelihood and composition estimation.
 - `R/PartIII`: SCRAPI internals and real data audit.
 - `R/PartIV`: parallel implementations and package comparisons.
