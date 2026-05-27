@@ -47,7 +47,7 @@ Problems and what they mirror:
 | 4 | 4a bootsmolt daily-loop (verbatim); 4b vectorized escapeLGD; 4c coverage check; 4d plot bootstrap distribution | `SCRAPI.r:139-145`; `night_fall_reascend_wc_binom.R:150` |
 | 5 | 5a toy data frames; 5b FishWH resample (verbatim); 5c FishDat resample (verbatim); 5d thetahat_toy; 5e full bootsmolt; 5f Error 1 trigger | `SCRAPI.r:74-126, 128-189` |
 | 6 | 6a simulate shifting p_n; 6b Cpattern + pooled vs stratified; 6c Collaps loop (verbatim); 6d Error 3 trigger; 6e parametric bootstrap CI | `SCRAPI.r:217, 254-269` |
-| 7 | 7a softMax; 7b PBT_log_likelihood; 7c PBT_optimllh; 7d PBT_expand_calc_MLE; 7e PBT_expand_calc (TotEx); 7f PBT_breakdown | `composition_estimation_utils.R:15-110, 440-486` |
+| 7 | 7a rmultinom three-stock simulation; 7b multinomial log-likelihood + optim(); 7c joint two-sample log-likelihood (D&H skeleton); 7d nonparametric bootstrap CI | `composition_estimation_utils.R:62-66` |
 
 See `repo_map.md` for the consolidated line-by-line index.
 
@@ -93,11 +93,10 @@ Use these as a quick self-check before moving to the next section.
 - [ ] Build a parametric-bootstrap CI under stratified structure.
 
 ### Section 7 checklist
-- [ ] Explain how `softMax` enforces valid composition probabilities.
-- [ ] Compute and interpret `PBT_log_likelihood`.
-- [ ] Run `PBT_optimllh` and interpret optimizer output in composition terms.
-- [ ] Trace `PBT_expand_calc_MLE` and `PBT_expand_calc` (TotEx) outputs.
-- [ ] Produce and interpret `PBT_breakdown` components.
+- [ ] Simulate a multinomial sample and verify the MLE equals observed proportions.
+- [ ] Write the multinomial log-likelihood and confirm `optim()` recovers `counts / sum(counts)`.
+- [ ] Explain why the joint log-likelihood for two multinomial samples equals the sum of their individual log-likelihoods.
+- [ ] Build a nonparametric bootstrap CI for stock proportions and interpret its width.
 
 ## MIT studio ports (supplemental)
 
