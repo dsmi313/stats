@@ -51,6 +51,54 @@ Problems and what they mirror:
 
 See `repo_map.md` for the consolidated line-by-line index.
 
+## Section checkpoints (what you should learn)
+
+Use these as a quick self-check before moving to the next section.
+
+### Section 1 checklist
+- [ ] Explain why the window-count estimator is \(\hat{a}_d = w/r\).
+- [ ] Build a season `wc` tibble with `sWeek`, `truth`, and observed `wc`.
+- [ ] Run a vectorized parametric bootstrap and interpret its 95% CI.
+- [ ] Demonstrate empirically that \(\hat{a}_d\) is unbiased under repeated simulation.
+
+### Section 2 checklist
+- [ ] Write and evaluate the log-likelihood on a parameter grid.
+- [ ] Compare grid-search intuition to `optim()` output for the same model.
+- [ ] Explain why the continuous-relaxation MLE is centered near truth in simulation.
+- [ ] Interpret inverse-SR weighting in the smolt-trap context.
+
+### Section 3 checklist
+- [ ] Separate and compute layer-1 vs layer-2 uncertainty terms.
+- [ ] Apply the delta method to propagate variance through a nonlinear estimator.
+- [ ] Reproduce the fallback joint-MLE logic used in escapeLGD.
+- [ ] Compare analytic variance ideas to bootstrap behavior for night-fall windows.
+
+### Section 4 checklist
+- [ ] Implement the bootsmolt daily-loop structure from SCOBI.
+- [ ] Implement a vectorized escapeLGD-style bootstrap for season totals.
+- [ ] Check bootstrap interval coverage in repeated simulation.
+- [ ] Read and explain a bootstrap distribution plot (shape, center, spread).
+
+### Section 5 checklist
+- [ ] Build toy FishWH/FishDat-style data frames used by resampling code.
+- [ ] Perform nonparametric resampling for FishWH and FishDat (verbatim logic).
+- [ ] Compute `thetahat` on resampled data and aggregate bootstrap totals.
+- [ ] Trigger and interpret the Section 5 Error 1 path deliberately.
+
+### Section 6 checklist
+- [ ] Simulate changing `p_n` over time and diagnose pooled-estimator bias.
+- [ ] Construct `Cpattern`-based pooled vs stratified comparisons.
+- [ ] Reproduce the `Collaps` loop logic and explain each grouped quantity.
+- [ ] Trigger Error 3 and explain why the stratification guard exists.
+- [ ] Build a parametric-bootstrap CI under stratified structure.
+
+### Section 7 checklist
+- [ ] Explain how `softMax` enforces valid composition probabilities.
+- [ ] Compute and interpret `PBT_log_likelihood`.
+- [ ] Run `PBT_optimllh` and interpret optimizer output in composition terms.
+- [ ] Trace `PBT_expand_calc_MLE` and `PBT_expand_calc` (TotEx) outputs.
+- [ ] Produce and interpret `PBT_breakdown` components.
+
 ## MIT studio ports (supplemental)
 
 `mit_studios/` contains fish-themed translations of every MIT 18.05 R
@@ -93,3 +141,14 @@ source("R/PartI/section01_binomial_window_count-test.R")
 ```
 
 Required packages: `ggplot2`, `dplyr`, `tibble`. Section 6 also uses `dplyr`.
+
+## Setup helper (recommended)
+
+Use the setup script to install missing dependencies and print package versions:
+
+```r
+source("R/PartI/setup_part1.R")
+```
+
+If you prefer strict reproducibility, you can also manage a lockfile workflow
+with `renv` (for example, `renv::init()` and `renv::snapshot()` after setup).
