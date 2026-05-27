@@ -38,12 +38,7 @@ mirrors. This table is the consolidated index.
 | 3. Variance + delta method | Joint optim call (`L-BFGS-B`, `fnscale = -1`) | `R/night_fall_reascend_wc_binom.R:71-75` |
 | 3. Variance + delta method | Nighttime bootstrap `rbinom(boots, totalPass, p_night)` | `R/night_fall_reascend_wc_binom.R:110` |
 | 4. Parametric bootstrap | Vectorized daily-count bootstrap `rbinom(boots, wc, wc_prop)` | `R/night_fall_reascend_wc_binom.R:150` |
-| 7. Multinomial composition | `softMax(x)` numerically stable softmax | `R/composition_estimation_utils.R:15-18` |
-| 7. Multinomial composition | `PBT_log_likelihood(pGroups, pW, nGroups, nUntag, tagRates)` | `R/composition_estimation_utils.R:62-66` |
-| 7. Multinomial composition | `PBT_optimllh()` softmax wrapper | `R/composition_estimation_utils.R:77-84` |
-| 7. Multinomial composition | `PBT_expand_calc_MLE()` optim call | `R/composition_estimation_utils.R:38-41` |
-| 7. Multinomial composition | `PBT_expand_calc()` accounting/TotEx method | `R/composition_estimation_utils.R:440-455` |
-| 7. Multinomial composition | `PBT_breakdown()` nonparametric bootstrap | `R/composition_estimation_utils.R:466-486` |
+| 7. Multinomial composition | `dmultinom()` two-sample structure mirrored in 7c joint log-likelihood | `R/composition_estimation_utils.R:62-66` |
 
 ## How to use this map
 

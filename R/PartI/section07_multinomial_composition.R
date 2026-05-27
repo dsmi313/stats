@@ -1,30 +1,26 @@
 #---------------------------------------------------------
 # File:   section07_multinomial_composition.R
-# Part I, Section 7 - escapeLGD's PBT composition likelihood
+# Part I, Section 7 — Multinomial composition
+#
+# Generalises the binomial (two outcomes) to multinomial (many).
+# Problem 7c builds the two-sample joint-likelihood that is the
+# structural core of the Delomas & Hess estimator.
 #
 # Repo pointer (escapeLGD/R/composition_estimation_utils.R):
-#   lines 15-18:   softMax(x)
-#   lines 62-66:   PBT_log_likelihood(pGroups, pW, nGroups, nUntag, tagRates)
-#                    y <- pW + sum((1 - tagRates) * pGroups)
-#                    pGroups_tag <- pGroups * tagRates
-#                    dmultinom(x = c(nGroups, nUntag),
-#                              prob = c(pGroups_tag, y), log = TRUE)
-#   lines 77-84:   PBT_optimllh(par, nGroups, nUntag, tagRates)
-#   lines 28-51:   PBT_expand_calc_MLE(values, tagRates)
-#   lines 440-455: PBT_expand_calc (accounting / TotEx method)
-#   lines 466-486: PBT_breakdown (nonparametric bootstrap)
+#   lines 62-66:   PBT_log_likelihood uses dmultinom() on the same
+#                  (tagged, untagged) two-sample structure you build in 7c
 #---------------------------------------------------------
 # Section 7 ----
 
-#--------------------------------------
-# Problem 7a: softMax with numerical stability (escapeLGD lines 15-18)
-section7_problem_7a_fish <- function(x) {
+# Problem 7a: simulate three stocks with rmultinom(); verify MLE = observed proportions
+section7_problem_7a_fish <- function(n = 200, props = c(0.6, 0.3, 0.1)) {
   cat("\n----------------------------------\n")
-  cat("Problem 7a: softMax with numerical stability\n")
+  cat("Problem 7a: rmultinom — MLE is observed proportions\n")
 
-  # Reproduce escapeLGD lines 15-18:
-  #   pr <- exp(x - max(x))
-  #   pr / sum(pr)
+  # Simulate one draw of n fish from three stocks using rmultinom().
+  # Compute sample proportions (the MLE) and compare to props.
+  # Replicate 1,000 times with replicate(). Plot the distribution of
+  # the stock-1 estimate with hist() and mark the truth with abline().
 
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
@@ -32,16 +28,14 @@ section7_problem_7a_fish <- function(x) {
 }
 
 
-# Problem 7b: PBT_log_likelihood (escapeLGD lines 62-66 verbatim)
-section7_problem_7b_fish <- function(pGroups, pW, nGroups, nUntag, tagRates) {
+# Problem 7b: multinomial log-likelihood and MLE via optim()
+section7_problem_7b_fish <- function(counts = c(120L, 60L, 20L)) {
   cat("\n----------------------------------\n")
-  cat("Problem 7b: PBT_log_likelihood\n")
+  cat("Problem 7b: multinomial log-likelihood; maximize with optim()\n")
 
-  # Reproduce escapeLGD lines 62-66 verbatim:
-  #   y           <- pW + sum((1 - tagRates) * pGroups)
-  #   pGroups_tag <- pGroups * tagRates
-  #   dmultinom(x = c(nGroups, nUntag),
-  #             prob = c(pGroups_tag, y), log = TRUE)
+  # Write ll(props | counts) = sum(counts * log(props)).
+  # Use a softmax reparametrization so optim() works over unconstrained space.
+  # Verify the MLE equals counts / sum(counts).
 
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
@@ -49,16 +43,18 @@ section7_problem_7b_fish <- function(pGroups, pW, nGroups, nUntag, tagRates) {
 }
 
 
-# Problem 7c: PBT_optimllh wrapper (escapeLGD lines 77-84)
-section7_problem_7c_fish <- function(par, nGroups, nUntag, tagRates) {
-  cat("\n----------------------------------\n")
-  cat("Problem 7c: PBT_optimllh -- softmax wrapper for optim()\n")
+# Problem 7c: joint log-likelihood for tagged and untagged samples
+section7_problem_7c_fish <- function(
+    tagged_counts   = c(S1 = 42L, S2 = 35L, S3 = 18L),
+    untagged_counts = c(S1 = 80L, S2 = 60L, S3 = 30L, Unassigned = 32L)) {
 
-  # par_prob <- softMax(par)
-  # pGroups  <- par_prob[1:(length(par_prob) - 1)]
-  # pW       <- par_prob[length(par_prob)]
-  # PBT_log_likelihood(pGroups, pW, nGroups, nUntag, tagRates)
-  # (Use the functions you implemented in 7a and 7b.)
+  cat("\n----------------------------------\n")
+  cat("Problem 7c: product of two multinomials — skeleton of Delomas & Hess\n")
+
+  # Tagged and untagged fish are separate multinomial samples that share
+  # the same underlying stock proportions.
+  # Joint log-likelihood = ll(tagged) + ll(untagged).
+  # Maximize over the shared stock proportions with optim().
 
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
@@ -66,50 +62,15 @@ section7_problem_7c_fish <- function(par, nGroups, nUntag, tagRates) {
 }
 
 
-# Problem 7d: PBT_expand_calc_MLE -- run optim() to recover proportions
-section7_problem_7d_fish <- function(nGroups, nUntag, tagRates) {
+# Problem 7d: bootstrapped CI for stock proportions
+section7_problem_7d_fish <- function(counts = c(S1 = 120L, S2 = 60L, S3 = 20L),
+                                      boots  = 10000L) {
   cat("\n----------------------------------\n")
-  cat("Problem 7d: PBT_expand_calc_MLE (escapeLGD lines 28-51)\n")
+  cat("Problem 7d: nonparametric bootstrap CI for stock proportions\n")
 
-  # K <- length(nGroups)
-  # optim(par = rep(1, K + 1),
-  #       fn = section7_problem_7c_fish,
-  #       nGroups = nGroups, nUntag = nUntag, tagRates = tagRates$tagRate,
-  #       control = list(fnscale = -1, maxit = 1000),
-  #       method = "BFGS")
-  # Then apply softMax to optim's par and return a tibble with
-  # group = c(tagRates$group, "Unassigned") and prop = par_prob.
-
-  # Do not change the above code.
-  # ********* YOUR CODE HERE ***********
-
-}
-
-
-# Problem 7e: PBT_expand_calc -- accounting/TotEx method (escapeLGD lines 440-455)
-section7_problem_7e_fish <- function(nGroups, nUntag, tagRates) {
-  cat("\n----------------------------------\n")
-  cat("Problem 7e: PBT_expand_calc (TotEx accounting)\n")
-
-  # For each hatchery group i: expand[i] = nGroups[i] / tagRates[i].
-  # Subtract the overage (sum(expand - nGroups)) from nUntag. Normalize.
-
-  # Do not change the above code.
-  # ********* YOUR CODE HERE ***********
-
-}
-
-
-# Problem 7f: PBT_breakdown -- nonparametric bootstrap (escapeLGD lines 466-486)
-section7_problem_7f_fish <- function(nGroups, nUntag, tagRates, boots) {
-  cat("\n----------------------------------\n")
-  cat("Problem 7f: PBT_breakdown -- nonparametric bootstrap of TotEx\n")
-
-  # Build the value vector values <- c(rep(names(nGroups), nGroups),
-  #                                     rep("Unassigned", nUntag)).
-  # For each bootstrap iteration: sample(values, replace = TRUE), recompute
-  # counts, call section7_problem_7e_fish. Return a matrix of bootstrap
-  # proportions (rows = iterations).
+  # Build the individual-fish vector from counts.
+  # sample(..., replace = TRUE) boots times; compute proportions each draw.
+  # Return quantile(., c(0.025, 0.975)) for each stock.
 
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
