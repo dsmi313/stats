@@ -2,6 +2,8 @@
 # File:   section05_nonparametric_bootstrap-solutions.R
 # Part I, Section 5 solutions
 #---------------------------------------------------------
+set.seed(2026)
+
 # Section 5 solutions ----
 
 library(dplyr)

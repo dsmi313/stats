@@ -2,6 +2,8 @@
 # File:   section02_mle_window_count-solutions.R
 # Part I, Section 2 solutions
 #---------------------------------------------------------
+set.seed(2026)
+
 # Section 2 solutions ----
 
 library(ggplot2)

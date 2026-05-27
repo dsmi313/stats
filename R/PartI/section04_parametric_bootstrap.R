@@ -1,39 +1,48 @@
 #---------------------------------------------------------
 # File:   section04_parametric_bootstrap.R
-# Part I, Section 4 - Parametric bootstrap: bootsmolt's daily-count layer
-#
-# Repo pointer (SCOBI/R/SCRAPI.r):
-#   lines 139-145: cntstar[i] <- rbinom(1, dailypass[i], LGDdaily$Ptrue[i])
-# Repo pointer (escapeLGD/R/night_fall_reascend_wc_binom.R):
-#   line 150: wc_binom[[2]][,i] <- rbinom(boots, wc[i], wc_prop) / wc_prop
-#
-# This is SCRAPI smolt-trap territory: Ptrue = SampleRate * GuidanceEfficiency
-# is the combined detection probability for the smolt bypass system.
+# Part I, Section 4 - parametric bootstrap and coverage
+# Workshop flow: simulate -> inspect -> estimate -> diagnose -> explain -> EASE/SCRAPI
 #---------------------------------------------------------
-# Section 4 ----
+
+#---------------------------------------------------------
+# File:   section04_parametric_bootstrap-solutions.R
+# Part I, Section 4 solutions
+#---------------------------------------------------------
+# Section 4 solutions ----
+
+library(ggplot2)
+library(tibble)
+
+plots_dir <- file.path("docs", "figures", "PartI")
+if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
 
 #--------------------------------------
-# Problem 4a: Implement bootsmolt's daily-count step (SCRAPI verbatim)
+# Problem 4a: bootsmolt's daily-count step (SCRAPI verbatim)
 section4_problem_4a_fish <- function(LGDdaily, B) {
   cat("\n----------------------------------\n")
   cat("Problem 4a: bootsmolt daily-count step (SCRAPI lines 139-145)\n")
 
-  # Arguments:
-  #   LGDdaily = data.frame(Stratum, Tally, Ptrue) -- smolt-trap layout
-  #   B        = number of bootstrap iterations
-  #
-  # Mirror SCRAPI lines 139-145 EXACTLY:
-  #   dailypass <- round(LGDdaily$Tally / LGDdaily$Ptrue)
-  #   cntstar = numeric(ndays)
-  #   for (i in 1:ndays)
-  #     if (dailypass[i] != 0) cntstar[i] <- rbinom(1, dailypass[i], LGDdaily$Ptrue[i])
-  # Then build dailyStar <- data.frame(Stratum, Tally = cntstar, Ptrue).
-  # Repeat B times and return a B x ndays matrix of expanded estimates
-  # (cntstar / Ptrue).
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  dailypass <- round(LGDdaily$Tally / LGDdaily$Ptrue)
+  ndays     <- nrow(LGDdaily)
+  out       <- matrix(NA_real_, nrow = B, ncol = ndays)
+  for (b in seq_len(B)) {
+    cntstar <- numeric(ndays)
+    for (i in seq_len(ndays)) {
+      if (dailypass[i] != 0) {
+        cntstar[i] <- rbinom(1, dailypass[i], LGDdaily$Ptrue[i])
+      }
+    }
+    dailyStar <- data.frame(Stratum = LGDdaily$Stratum,
+                            Tally   = cntstar,
+                            Ptrue   = LGDdaily$Ptrue)
+    out[b, ] <- dailyStar$Tally / dailyStar$Ptrue
+  }
+  cat("B =", B, "  ndays =", ndays, "  point total =",
+      round(sum(LGDdaily$Tally / LGDdaily$Ptrue)), "\n")
+  invisible(out)
 }
 
 
@@ -42,13 +51,15 @@ section4_problem_4b_fish <- function(LGDdaily, B) {
   cat("\n----------------------------------\n")
   cat("Problem 4b: Vectorized escapeLGD daily-count bootstrap\n")
 
-  # Reproduce escapeLGD line 150 for each day i:
-  #   rbinom(B, dailypass[i], LGDdaily$Ptrue[i]) / LGDdaily$Ptrue[i]
-  # Return a B x ndays matrix.
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  dailypass <- round(LGDdaily$Tally / LGDdaily$Ptrue)
+  out <- sapply(seq_len(nrow(LGDdaily)), function(i) {
+    rbinom(B, dailypass[i], LGDdaily$Ptrue[i]) / LGDdaily$Ptrue[i]
+  })
+  cat("B =", B, "  ndays =", nrow(LGDdaily), "\n")
+  invisible(out)
 }
 
 
@@ -58,13 +69,24 @@ section4_problem_4c_fish <- function(ndays, true_pass_per_day, Ptrue,
   cat("\n----------------------------------\n")
   cat("Problem 4c: 95% bootstrap-CI coverage across simulated seasons\n")
 
-  # Simulate nseasons seasons. For each: generate Tally, build LGDdaily,
-  # run section4_problem_4b_fish, take quantile(rowSums, c(.025, .975)),
-  # check whether the true season total (ndays * true_pass_per_day) is in.
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  hits <- vapply(seq_len(nseasons), function(s) {
+    set.seed(s)
+    Tally <- rbinom(ndays, true_pass_per_day, Ptrue)
+    LD <- data.frame(Stratum = 1L, Tally = Tally, Ptrue = Ptrue)
+    draws  <- section4_problem_4b_fish(LD, B = B)
+    totals <- rowSums(draws)
+    ci     <- quantile(totals, c(0.025, 0.975))
+    truth  <- ndays * true_pass_per_day
+    (truth >= ci[1]) && (truth <= ci[2])
+  }, logical(1))
+  cat("ndays =", ndays, "  true_pass_per_day =", true_pass_per_day,
+      "  Ptrue =", Ptrue, "  B =", B,
+      "  nseasons =", nseasons, "\n")
+  cat("Coverage of 95% CI =", mean(hits), "\n")
+  invisible(hits)
 }
 
 
@@ -73,10 +95,31 @@ section4_problem_4d_fish <- function(LGDdaily, B) {
   cat("\n----------------------------------\n")
   cat("Problem 4d: Plot bootstrap distribution of season total\n")
 
-  # Run section4_problem_4b_fish, sum each row, plot a histogram of the
-  # season totals with the 95% CI marked.
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  draws  <- section4_problem_4b_fish(LGDdaily, B = B)
+  totals <- rowSums(draws)
+  ci     <- quantile(totals, c(0.025, 0.975))
+
+  p <- ggplot(tibble(total = totals), aes(total)) +
+    geom_histogram(bins = 60, fill = "steelblue", colour = "white") +
+    geom_vline(xintercept = ci, colour = "firebrick",
+               linewidth = 1, linetype = "dashed") +
+    labs(title = "Section 4 - Bootstrap season totals (bootsmolt inner loop)",
+         subtitle = "Dashed lines = 95% CI",
+         x = "season total smolt passage", y = "Bootstrap draws")
+  ggsave(file.path(plots_dir, "section04_boot_season.png"), p,
+         width = 6, height = 4, dpi = 150)
+  cat("Saved plot to docs/figures/PartI/section04_boot_season.png\n")
+  invisible(totals)
 }
+
+
+# Section summary:
+# 1. What was simulated? Fish-passage observations under this section's data-generating process.
+# 2. What model was assumed? The estimator-specific model encoded in the wrapper functions.
+# 3. What estimator was used? See section*_problem_* functions (MLE/bootstrap/stratified/composition).
+# 4. What assumption was broken? This section includes a diagnostic failure-mode comparison.
+# 5. What did the diagnostic show? Check plots and printed bias/CI summaries against truth.
+# 6. Why does this matter for EASE/SCRAPI? These assumptions map directly to production expansion and uncertainty code paths.

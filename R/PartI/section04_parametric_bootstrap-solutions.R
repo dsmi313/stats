@@ -2,6 +2,8 @@
 # File:   section04_parametric_bootstrap-solutions.R
 # Part I, Section 4 solutions
 #---------------------------------------------------------
+set.seed(2026)
+
 # Section 4 solutions ----
 
 library(ggplot2)

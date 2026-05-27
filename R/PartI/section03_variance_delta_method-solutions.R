@@ -2,6 +2,8 @@
 # File:   section03_variance_delta_method-solutions.R
 # Part I, Section 3 solutions
 #---------------------------------------------------------
+set.seed(2026)
+
 # Section 3 solutions ----
 
 #--------------------------------------

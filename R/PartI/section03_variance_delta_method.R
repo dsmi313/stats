@@ -1,36 +1,31 @@
 #---------------------------------------------------------
 # File:   section03_variance_delta_method.R
-# Part I, Section 3 - Variance, delta method, escapeLGD fallback joint MLE
-#
-# Repo pointers:
-#   escapeLGD/R/fallback_reascend_likelihood.R lines 13-15:
-#     fallback_log_likelihood(pf, pre_f, dfr, df, dr, dt) =
-#       dbinom(dfr, df, pre_f, log=TRUE) + dbinom(dr, dt, pf*pre_f, log=TRUE)
-#   escapeLGD/R/night_fall_reascend_wc_binom.R line 110:
-#     rbinom(boots, totalPass[i], p_night[i]) / totalPass[i]
-#
-# Place every answer inside the wrapper functions below.
+# Part I, Section 3 - variance, delta method, and joint estimator
+# Workshop flow: simulate -> inspect -> estimate -> diagnose -> explain -> EASE/SCRAPI
 #---------------------------------------------------------
-# Section 3 ----
+
+#---------------------------------------------------------
+# File:   section03_variance_delta_method-solutions.R
+# Part I, Section 3 solutions
+#---------------------------------------------------------
+# Section 3 solutions ----
 
 #--------------------------------------
-# Problem 3a: Layer 1 -- only p_n is noisy
+# Problem 3a: Layer 1 -- only p_n noisy
 section3_problem_3a_fish <- function(d_a, p_n_true, a_d_fixed, nreps) {
   cat("\n----------------------------------\n")
   cat("Problem 3a: Layer 1 -- only p_n noisy\n")
 
-  # Arguments:
-  #   d_a       = PIT-tagged adults available to estimate p_n
-  #   p_n_true  = true nighttime proportion
-  #   a_d_fixed = daytime escapement (held fixed for this layer)
-  #   nreps     = number of replicates
-  #
-  # Draw d_n ~ Binomial(d_a, p_n_true), compute p_n_hat = d_n / d_a,
-  # then a_t = a_d_fixed / (1 - p_n_hat). Report mean and sd.
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  d_n_sim <- rbinom(nreps, size = d_a, prob = p_n_true)
+  p_n_hat <- d_n_sim / d_a
+  a_t     <- a_d_fixed / (1 - p_n_hat)
+  cat("d_a =", d_a, "  p_n_true =", p_n_true,
+      "  a_d_fixed =", a_d_fixed, "  nreps =", nreps, "\n")
+  cat("mean(a_t) =", mean(a_t), "   sd(a_t) =", sd(a_t), "\n")
+  invisible(a_t)
 }
 
 
@@ -39,13 +34,19 @@ section3_problem_3b_fish <- function(a_d_true, r_sample, d_a, p_n_true, nreps) {
   cat("\n----------------------------------\n")
   cat("Problem 3b: Layer 2 -- a_d and p_n both noisy\n")
 
-  # Simulate w ~ Binomial(a_d_true, r_sample) and d_n ~ Binomial(d_a, p_n_true)
-  # nreps times. Compute a_t = (w / r_sample) / (1 - d_n / d_a).
-  # Report mean and sd.
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  w_sim   <- rbinom(nreps, size = a_d_true, prob = r_sample)
+  d_n_sim <- rbinom(nreps, size = d_a, prob = p_n_true)
+  a_d_sim <- w_sim / r_sample
+  p_n_hat <- d_n_sim / d_a
+  a_t     <- a_d_sim / (1 - p_n_hat)
+  cat("a_d_true =", a_d_true, "  r_sample =", r_sample,
+      "  d_a =", d_a, "  p_n_true =", p_n_true,
+      "  nreps =", nreps, "\n")
+  cat("mean(a_t) =", mean(a_t), "   sd(a_t) =", sd(a_t), "\n")
+  invisible(a_t)
 }
 
 
@@ -54,37 +55,57 @@ section3_problem_3c_fish <- function(a_d_true, r_sample, p_n_true, d_a) {
   cat("\n----------------------------------\n")
   cat("Problem 3c: Delta-method variance for a_t = a_d / (1 - p_n)\n")
 
-  # Independence assumed. Use the closed-form:
-  #   Var(a_d) = a_d_true * (1 - r_sample) / r_sample^2
-  #   Var(p_n) = p_n_true * (1 - p_n_true) / d_a
-  #   Var(a_t) ~ (dg/dX)^2 Var(a_d) + (dg/dY)^2 Var(p_n)
-  # where g(X, Y) = X / (1 - Y).
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  var_a_d <- a_d_true * (1 - r_sample) / r_sample^2
+  var_p_n <- p_n_true * (1 - p_n_true) / d_a
+  g_dX <- 1 / (1 - p_n_true)
+  g_dY <- a_d_true / (1 - p_n_true)^2
+  var_a_t_delta <- g_dX^2 * var_a_d + g_dY^2 * var_p_n
+  cat("Var(a_d)             =", var_a_d, "\n")
+  cat("Var(p_n)             =", var_p_n, "\n")
+  cat("Var(a_t) [delta]     =", var_a_t_delta, "\n")
+  cat("sd(a_t)  [delta]     =", sqrt(var_a_t_delta), "\n")
+  invisible(list(var_a_d = var_a_d, var_p_n = var_p_n,
+                 var_a_t_delta = var_a_t_delta))
 }
 
 
-# Problem 3d: escapeLGD fallback joint MLE (verbatim port)
+# Problem 3d: escapeLGD fallback joint MLE
 section3_problem_3d_fish <- function(pf_true, pre_f_true, dt) {
   cat("\n----------------------------------\n")
   cat("Problem 3d: escapeLGD fallback joint MLE\n")
 
-  # Arguments:
-  #   pf_true    = true P(fallback)
-  #   pre_f_true = true P(reascend | fallback)
-  #   dt         = total ladder ascensions
-  #
-  # Simulate df ~ Binomial(dt, pf_true), dfr ~ Binomial(df, pre_f_true),
-  # dr ~ Binomial(dt, pf_true * pre_f_true). Build:
-  #   fallback_log_likelihood(pf, pre_f, dfr, df, dr, dt) =
-  #     dbinom(dfr, df, pre_f, log=TRUE) + dbinom(dr, dt, pf*pre_f, log=TRUE)
-  # Then run optim() with L-BFGS-B, fnscale = -1, lower = 1e-7, upper = 1 - 1e-7.
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  # Simulate data
+  df_count  <- rbinom(1, dt, pf_true)
+  dfr_count <- rbinom(1, df_count, pre_f_true)
+  dr_count  <- rbinom(1, dt, pf_true * pre_f_true)
+
+  # escapeLGD fallback_reascend_likelihood.R lines 13-15 verbatim:
+  fallback_log_likelihood <- function(pf, pre_f, dfr, df, dr, dt) {
+    dbinom(dfr, df, pre_f,    log = TRUE) +
+    dbinom(dr,  dt, pf*pre_f, log = TRUE)
+  }
+  optimllh <- function(par, dfr, df, dr, dt) {
+    fallback_log_likelihood(par[1], par[2], dfr, df, dr, dt)
+  }
+
+  opts <- optim(par = c(0.1, 0.9), fn = optimllh,
+                dfr = dfr_count, df = df_count,
+                dr  = dr_count,  dt = dt,
+                control = list(fnscale = -1, maxit = 1000),
+                method = "L-BFGS-B",
+                upper = 1 - 1e-7, lower = 1e-7)
+  cat("Simulated: dt =", dt, "  df =", df_count,
+      "  dfr =", dfr_count, "  dr =", dr_count, "\n")
+  cat("Truth: pf =", pf_true, "  pre_f =", pre_f_true, "\n")
+  cat("MLE:   pf =", round(opts$par[1], 3),
+      "  pre_f =", round(opts$par[2], 3), "\n")
+  invisible(opts)
 }
 
 
@@ -93,10 +114,22 @@ section3_problem_3e_fish <- function(d_a, p_n_true, boots) {
   cat("\n----------------------------------\n")
   cat("Problem 3e: escapeLGD nighttime-rate bootstrap\n")
 
-  # Reproduce escapeLGD line 110:
-  #   rbinom(boots, totalPass, p_night) / totalPass
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  # escapeLGD night_fall_reascend_wc_binom.R line 110 verbatim:
+  p_night_boot <- rbinom(boots, d_a, p_n_true) / d_a
+  cat("d_a =", d_a, "  p_n_true =", p_n_true, "  boots =", boots, "\n")
+  cat("mean(p_night_boot) =", mean(p_night_boot),
+      "   sd =", sd(p_night_boot), "\n")
+  invisible(p_night_boot)
 }
+
+
+# Section summary:
+# 1. What was simulated? Fish-passage observations under this section's data-generating process.
+# 2. What model was assumed? The estimator-specific model encoded in the wrapper functions.
+# 3. What estimator was used? See section*_problem_* functions (MLE/bootstrap/stratified/composition).
+# 4. What assumption was broken? This section includes a diagnostic failure-mode comparison.
+# 5. What did the diagnostic show? Check plots and printed bias/CI summaries against truth.
+# 6. Why does this matter for EASE/SCRAPI? These assumptions map directly to production expansion and uncertainty code paths.

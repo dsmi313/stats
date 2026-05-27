@@ -1,103 +1,60 @@
 #---------------------------------------------------------
 # File:   section01_binomial_window_count-solutions.R
-# Part I, Section 1 solutions
+# Part I, Section 1 concise instructor key
 #---------------------------------------------------------
-# Section 1 solutions ----
+set.seed(2026)
 
-library(ggplot2)
-library(dplyr)
-library(tibble)
+N <- 400
+p <- 5 / 6
+nsims <- 5000
 
-plots_dir <- file.path("docs", "figures", "PartI")
-if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
+# Fish-level Bernoulli day and window count
+Det <- rbinom(N, 1, p)
+W <- sum(Det)
 
-#--------------------------------------
-# Problem 1a: Simulate one day at the ladder window
-section1_problem_1a_fish <- function(a_d_true, r_sample) {
-  cat("\n----------------------------------\n")
-  cat("Problem 1a: Single day window count and a_d_hat\n")
+# Repeated Binomial days and abundance expansion
+W_sim <- replicate(nsims, sum(rbinom(N, 1, p)))
+N_hat <- W_sim / p
 
-  # Do not change the above code.
-  # ********* YOUR CODE HERE ***********
+cat("One-day W:", W, "\n")
+cat("Mean(W_sim) vs Np:", round(mean(W_sim), 2), "vs", N * p, "\n")
+cat("Var(W_sim) vs Np(1-p):", round(var(W_sim), 2), "vs", N * p * (1 - p), "\n")
+cat("Mean(N_hat) vs N:", round(mean(N_hat), 2), "vs", N, "\n\n")
 
-  w_obs   <- rbinom(1, size = a_d_true, prob = r_sample)
-  a_d_hat <- w_obs / r_sample
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+plot(seq_len(N), Det, pch = 16, cex = 0.6,
+     xlab = "Fish index", ylab = "Detected (0/1)", main = "One day")
+hist(W_sim, breaks = 35, col = "lightsteelblue", border = "white", main = "W_sim", xlab = "W")
+abline(v = N * p, col = 2, lwd = 2)
+hist(N_hat, breaks = 35, col = "honeydew3", border = "white", main = "N_hat", xlab = "W/p")
+abline(v = N, col = 2, lwd = 2)
+par(mfrow = c(1, 1))
 
-  cat("a_d_true =", a_d_true, "  r_sample =", r_sample, "\n")
-  cat("Observed window count w =", w_obs, "\n")
-  cat("a_d_hat = w / r          =", a_d_hat, "\n")
-  invisible(list(w = w_obs, a_d_hat = a_d_hat))
-}
+# Exact-vs-simulation check
+k <- 0:N
+sim_prob <- tabulate(W_sim + 1, nbins = N + 1) / nsims
+exact_prob <- dbinom(k, N, p)
+plot(k, exact_prob, type = "l", lwd = 2, main = "dbinom vs simulation", xlab = "k", ylab = "Probability")
+points(k, sim_prob, pch = 16, cex = 0.4, col = "dodgerblue3")
 
+k0 <- floor(N * p)
+cat("P(W <=", k0, ") sim:", round(mean(W_sim <= k0), 4),
+    " exact:", round(pbinom(k0, N, p), 4), "\n\n")
 
-# Problem 1b: Build escapeLGD-style `wc` tibble for a season
-section1_problem_1b_fish <- function(n_weeks, wc_prop, mean_truth) {
-  cat("\n----------------------------------\n")
-  cat("Problem 1b: Season-long escapeLGD wc tibble (no GE)\n")
+# Failure lab 1: unequal p
+p_high <- 0.95; p_low <- 0.65
+W_unequal <- replicate(nsims, sum(rbinom(N/2, 1, p_high)) + sum(rbinom(N/2, 1, p_low)))
+p_bar <- (p_high + p_low) / 2
+W_naive <- rbinom(nsims, N, p_bar)
+cat("Unequal p var vs naive:", round(var(W_unequal), 2), "vs", round(var(W_naive), 2), "\n")
 
-  # Do not change the above code.
-  # ********* YOUR CODE HERE ***********
-
-  wc <- tibble(
-    sWeek = seq_len(n_weeks),
-    truth = round(runif(n_weeks, mean_truth * 0.5, mean_truth * 1.5)),
-    wc    = NA_integer_
-  )
-  wc$wc <- rbinom(n_weeks, size = wc$truth, prob = wc_prop)
-
-  cat("n_weeks =", n_weeks, "  wc_prop =", wc_prop,
-      "  mean_truth =", mean_truth, "\n")
-  cat("First rows of wc tibble:\n")
-  print(head(wc, 6))
-  invisible(wc)
-}
-
-
-# Problem 1c: Vectorized parametric bootstrap of season total
-section1_problem_1c_fish <- function(wc, wc_prop, boots) {
-  cat("\n----------------------------------\n")
-  cat("Problem 1c: Vectorized parametric bootstrap of season total\n")
-
-  # Do not change the above code.
-  # ********* YOUR CODE HERE ***********
-
-  # escapeLGD line 150 reproduced:
-  boot_mat <- vapply(seq_len(nrow(wc)),
-                     function(i) rbinom(boots, wc$wc[i], wc_prop) / wc_prop,
-                     numeric(boots))
-  season_totals <- rowSums(boot_mat)
-  ci <- quantile(season_totals, c(0.025, 0.975))
-
-  cat("boots =", boots, "  wc_prop =", wc_prop, "\n")
-  cat("Point estimate (sum(wc / r)) =", sum(wc$wc / wc_prop), "\n")
-  cat("95% bootstrap CI             = [", round(ci[1]), ",",
-      round(ci[2]), "]\n")
-  invisible(list(season_totals = season_totals, ci = ci))
-}
-
-
-# Problem 1d: Replicate to verify a_d_hat = w/r is unbiased
-section1_problem_1d_fish <- function(a_d_true, r_sample, nreps) {
-  cat("\n----------------------------------\n")
-  cat("Problem 1d: Replicated unbiasedness check\n")
-
-  # Do not change the above code.
-  # ********* YOUR CODE HERE ***********
-
-  sims <- vapply(seq_len(nreps),
-                 function(i) rbinom(1, a_d_true, r_sample) / r_sample,
-                 numeric(1))
-  cat("a_d_true =", a_d_true, "  r_sample =", r_sample,
-      "  nreps =", nreps, "\n")
-  cat("mean(a_d_hat) =", mean(sims),
-      "   sd(a_d_hat) =", sd(sims), "\n")
-
-  p <- ggplot(tibble(a_d_hat = sims), aes(a_d_hat)) +
-    geom_histogram(bins = 30, fill = "steelblue", colour = "white") +
-    geom_vline(xintercept = a_d_true, colour = "firebrick", linewidth = 1) +
-    labs(title = "Section 1 - Window-count estimator a_d_hat = w / r",
-         x = expression(hat(a)[d]), y = "Replicates")
-  ggsave(file.path(plots_dir, "section01_estimator_hist.png"), p,
-         width = 6, height = 4, dpi = 150)
-  invisible(sims)
-}
+# Failure lab 2: time-varying p
+N_blocks <- c(160, 140, 100)
+p_blocks <- c(0.95, 0.75, 0.40)
+W_timevarying <- replicate(nsims,
+                           rbinom(1, N_blocks[1], p_blocks[1]) +
+                           rbinom(1, N_blocks[2], p_blocks[2]) +
+                           rbinom(1, N_blocks[3], p_blocks[3]))
+p_bar_time <- sum(N_blocks * p_blocks) / N
+W_naive_time <- rbinom(nsims, N, p_bar_time)
+cat("Time-varying p var vs naive:", round(var(W_timevarying), 2), "vs", round(var(W_naive_time), 2), "\n")

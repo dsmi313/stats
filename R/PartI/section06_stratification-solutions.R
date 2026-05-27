@@ -2,6 +2,8 @@
 # File:   section06_stratification-solutions.R
 # Part I, Section 6 solutions
 #---------------------------------------------------------
+set.seed(2026)
+
 # Section 6 solutions ----
 
 library(dplyr)

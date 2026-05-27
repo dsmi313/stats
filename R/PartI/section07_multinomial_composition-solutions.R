@@ -2,6 +2,8 @@
 # File:   section07_multinomial_composition-solutions.R
 # Part I, Section 7 solutions
 #---------------------------------------------------------
+set.seed(2026)
+
 # Section 7 solutions ----
 
 library(dplyr)

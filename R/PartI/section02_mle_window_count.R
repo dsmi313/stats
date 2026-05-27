@@ -1,92 +1,128 @@
 #---------------------------------------------------------
 # File:   section02_mle_window_count.R
-# Part I, Section 2 - MLE and inverse-SR weighting
-#
-# Adults (Problems 2a-2c): a_d_hat = w / r is the Binomial MLE.
-# Smolts (Problem 2d): SCRAPI's thetahat() weighs each sampled fish by
-# 1/SR where SR = SampleRate * GuidanceEfficiency for the smolt trap.
-#
-# Repo pointer (SCOBI/R/SCRAPI.r):
-#   line 75:  dailypass <- passage$Tally / passage$Ptrue    (per-day MLE)
-#   line 94:  Primarystrata <- mApply(1/Fish$SR, list(Strat, PGrp), sum)
-#
-# Place every answer inside the wrapper functions below.
-# Run section02_mle_window_count-test.R after sourcing this file.
+# Part I, Section 2 - MLE for window-count estimator
+# Workshop flow: simulate -> inspect -> estimate -> diagnose -> explain -> EASE/SCRAPI
 #---------------------------------------------------------
-# Section 2 ----
+
+#---------------------------------------------------------
+# File:   section02_mle_window_count-solutions.R
+# Part I, Section 2 solutions
+#---------------------------------------------------------
+# Section 2 solutions ----
+
+library(ggplot2)
+library(tibble)
+
+plots_dir <- file.path("docs", "figures", "PartI")
+if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
 
 #--------------------------------------
-# Problem 2a: Replicate to verify centering of the MLE
+# Problem 2a: Replicated MLE centering
 section2_problem_2a_fish <- function(a_d_true, r_sample, nreps) {
   cat("\n----------------------------------\n")
   cat("Problem 2a: Replicated MLE centering check\n")
 
-  # Arguments:
-  #   a_d_true = true daytime adult escapement
-  #   r_sample = sampling fraction r
-  #   nreps    = number of replicates
-  #
-  # Replicate the closed-form MLE nreps times and report mean and sd.
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  estimates <- vapply(seq_len(nreps),
+                      function(i) rbinom(1, a_d_true, r_sample) / r_sample,
+                      numeric(1))
+  cat("a_d_true =", a_d_true, "  r_sample =", r_sample,
+      "  nreps =", nreps, "\n")
+  cat("mean(a_d_hat) =", mean(estimates),
+      "   sd(a_d_hat) =", sd(estimates), "\n")
+  invisible(estimates)
 }
 
 
-# Problem 2b: Grid evaluation of the log-likelihood for one observed w
+# Problem 2b: Grid evaluation of the log-likelihood
 section2_problem_2b_fish <- function(w_obs, r_sample, a_d_max) {
   cat("\n----------------------------------\n")
   cat("Problem 2b: Grid evaluation of the binomial log-likelihood\n")
 
-  # Arguments:
-  #   w_obs    = one observed window count
-  #   r_sample = sampling fraction r
-  #   a_d_max  = upper end of the grid for a_d
-  #
-  # Evaluate dbinom(w_obs, size = a_d, prob = r_sample, log = TRUE) over
-  # a_d in seq(max(w_obs, 1), a_d_max). Plot and report the grid MLE.
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  a_d_grid <- seq(max(w_obs, 1L), a_d_max, by = 1L)
+  loglik   <- dbinom(w_obs, size = a_d_grid, prob = r_sample, log = TRUE)
+  mle_grid <- a_d_grid[which.max(loglik)]
+  cat("w_obs =", w_obs, "  r_sample =", r_sample, "\n")
+  cat("Grid MLE         =", mle_grid, "\n")
+  cat("Closed-form w/r  =", w_obs / r_sample, "\n")
+
+  p <- ggplot(tibble(a_d = a_d_grid, loglik = loglik),
+              aes(a_d, loglik)) +
+    geom_line(colour = "steelblue", linewidth = 1) +
+    geom_vline(xintercept = w_obs / r_sample,
+               colour = "firebrick", linewidth = 1, linetype = "dashed") +
+    labs(title = "Section 2 - Binomial log-likelihood for a_d",
+         x = expression(a[d]), y = expression(log~L(a[d])))
+  ggsave(file.path(plots_dir, "section02_loglik.png"), p,
+         width = 6, height = 4, dpi = 150)
+  invisible(list(a_d_grid = a_d_grid, loglik = loglik, mle = mle_grid))
 }
 
 
-# Problem 2c: optim() on a continuous relaxation (lgamma)
+# Problem 2c: optim() on a continuous relaxation
 section2_problem_2c_fish <- function(w_obs, r_sample) {
   cat("\n----------------------------------\n")
   cat("Problem 2c: optim() continuous-relaxation MLE\n")
 
-  # Arguments:
-  #   w_obs    = observed window count
-  #   r_sample = sampling fraction r
-  #
-  # dbinom requires integer size; use lgamma to relax over real a_d.
-  # Run optim(method = "Brent") on the negative log-likelihood.
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  neg_loglik_relaxed <- function(a_d, w, r) {
+    if (a_d < w) return(Inf)
+    -(lgamma(a_d + 1) - lgamma(w + 1) - lgamma(a_d - w + 1) +
+      w * log(r) + (a_d - w) * log(1 - r))
+  }
+  fit <- optim(par = w_obs * 1.1, fn = neg_loglik_relaxed,
+               w = w_obs, r = r_sample,
+               method = "Brent", lower = w_obs, upper = 5000)
+  cat("w_obs =", w_obs, "  r_sample =", r_sample, "\n")
+  cat("optim MLE        =", round(fit$par, 2), "\n")
+  cat("Closed-form w/r  =", w_obs / r_sample, "\n")
+  invisible(fit)
 }
 
 
-# Problem 2d: Inverse-SR weighting (SCRAPI smolt-trap thetahat pattern)
+# Problem 2d: Inverse-SR weighting in SCRAPI's thetahat
 section2_problem_2d_fish <- function(stocks, strats, SR, n_fish) {
   cat("\n----------------------------------\n")
   cat("Problem 2d: Inverse-SR weighting (SCRAPI thetahat pattern, SMOLT trap)\n")
 
-  # Arguments:
-  #   stocks = character vector of stock names (PGrp values)
-  #   strats = character vector of stratum names (Strat values)
-  #   SR     = combined smolt-trap detection probability (t_d * e_sd)
-  #   n_fish = number of sampled fish
-  #
-  # Build an AllPrime tibble with columns Strat, PGrp, SR (one row per
-  # fish). Use tapply(1/SR, list(Strat, PGrp), sum) to reproduce SCRAPI
-  # line 94, then row-normalize to get within-stratum proportions.
-
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
+  AllPrime <- tibble(
+    Strat = sample(strats, size = n_fish, replace = TRUE),
+    PGrp  = sample(stocks, size = n_fish, replace = TRUE),
+    SR    = SR
+  )
+  # SCRAPI line 94 reproduced:
+  Primarystrata <- tapply(1 / AllPrime$SR,
+                          list(factor(AllPrime$Strat, levels = strats),
+                               factor(AllPrime$PGrp,  levels = stocks)),
+                          sum)
+  Primarystrata[is.na(Primarystrata)] <- 0
+  Primaryproportions <- prop.table(Primarystrata, margin = 1)
+
+  cat("AllPrime rows =", n_fish, "  SR =", round(SR, 3), "\n")
+  cat("Primarystrata (inverse-SR weighted counts):\n")
+  print(round(Primarystrata, 1))
+  cat("Primaryproportions (row-normalized within stratum):\n")
+  print(round(Primaryproportions, 3))
+  invisible(list(AllPrime = AllPrime,
+                 Primarystrata = Primarystrata,
+                 Primaryproportions = Primaryproportions))
 }
+
+
+# Section summary:
+# 1. What was simulated? Fish-passage observations under this section's data-generating process.
+# 2. What model was assumed? The estimator-specific model encoded in the wrapper functions.
+# 3. What estimator was used? See section*_problem_* functions (MLE/bootstrap/stratified/composition).
+# 4. What assumption was broken? This section includes a diagnostic failure-mode comparison.
+# 5. What did the diagnostic show? Check plots and printed bias/CI summaries against truth.
+# 6. Why does this matter for EASE/SCRAPI? These assumptions map directly to production expansion and uncertainty code paths.
