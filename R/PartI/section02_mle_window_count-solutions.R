@@ -77,37 +77,6 @@ section2_problem_2c_fish <- function(w_obs, r_sample) {
 }
 
 
-# Problem 2d: Inverse-SR weighting in SCRAPI's thetahat
-section2_problem_2d_fish <- function(stocks, strats, SR, n_fish) {
-  cat("\n----------------------------------\n")
-  cat("Problem 2d: Inverse-SR weighting (SCRAPI thetahat pattern, SMOLT trap)\n")
-
-  # Do not change the above code.
-  # ********* YOUR CODE HERE ***********
-
-  AllPrime <- tibble(
-    Strat = sample(strats, size = n_fish, replace = TRUE),
-    PGrp  = sample(stocks, size = n_fish, replace = TRUE),
-    SR    = SR
-  )
-  # SCRAPI line 94 reproduced:
-  Primarystrata <- tapply(1 / AllPrime$SR,
-                          list(factor(AllPrime$Strat, levels = strats),
-                               factor(AllPrime$PGrp,  levels = stocks)),
-                          sum)
-  Primarystrata[is.na(Primarystrata)] <- 0
-  Primaryproportions <- prop.table(Primarystrata, margin = 1)
-
-  cat("AllPrime rows =", n_fish, "  SR =", round(SR, 3), "\n")
-  cat("Primarystrata (inverse-SR weighted counts):\n")
-  print(round(Primarystrata, 1))
-  cat("Primaryproportions (row-normalized within stratum):\n")
-  print(round(Primaryproportions, 3))
-  invisible(list(AllPrime = AllPrime,
-                 Primarystrata = Primarystrata,
-                 Primaryproportions = Primaryproportions))
-}
-
 
 # Narrative walkthrough ----
 # The wrapper functions above ARE the correct answers.
@@ -117,14 +86,10 @@ section2_problem_2d_fish <- function(stocks, strats, SR, n_fish) {
 set.seed(2026)
 
 # ---- shared parameters (match stub argument names) ----
-a_d_true <- 500L              # true daytime adult escapement
-r_sample <- 5/6               # fraction of ladder width covered by the window
-nreps    <- 1000L             # Monte Carlo repetitions for the centering check
-a_d_max  <- 700L              # upper bound for the log-likelihood grid
-stocks   <- c("LOSALM", "CHMBLN", "IMNAHA")   # stock identifiers (PGrp values)
-strats   <- c("S1", "S2", "S3")               # temporal strata
-SR       <- 5/6 * 0.45        # smolt-trap combined detection probability
-n_fish   <- 90L               # fish sampled at the bypass trap
+a_d_true <- 500L   # true daytime adult escapement
+r_sample <- 5/6    # fraction of ladder width covered by the window
+nreps    <- 1000L  # Monte Carlo repetitions for the centering check
+a_d_max  <- 700L   # upper bound for the log-likelihood grid
 
 # ---- Problem 2a: the MLE is w / r — prove it by simulation ----
 # Each day a_d_true fish pass through the ladder.  The window counts only the
@@ -199,74 +164,10 @@ cat("  w / r       =", w_obs / r_sample,  "\n")
 # This pattern — lgamma relaxation + Brent — is what escapeLGD uses when
 # the likelihood has no closed-form derivative.
 
-# ---- Problem 2d: inverse-SR weighting (SCRAPI thetahat pattern) ----
-# At the smolt bypass, SR = SampleRate * GuidanceEfficiency is the probability
-# that a passing fish is both guided into the trap and actually counted.
-# A fish caught with SR = 0.20 represents 1/0.20 = 5 fish in the population;
-# a fish caught with SR = 0.40 represents only 2.5 fish.
-# Summing 1/SR within each Strat x PGrp cell is the Horvitz-Thompson estimator
-# for the number of fish in that cell.
-
-AllPrime <- tibble(
-  Strat = sample(strats, size = n_fish, replace = TRUE),   # temporal stratum
-  PGrp  = sample(stocks, size = n_fish, replace = TRUE),   # stock assignment
-  SR    = SR                                               # constant here
-)
-# One row per sampled fish — mirrors SCRAPI's AllPrime data frame exactly.
-
-# SCRAPI line 94: tapply sums 1/SR within every Strat x PGrp combination.
-Primarystrata <- tapply(1 / AllPrime$SR,
-                        list(factor(AllPrime$Strat, levels = strats),
-                             factor(AllPrime$PGrp,  levels = stocks)),
-                        sum)
-Primarystrata[is.na(Primarystrata)] <- 0   # empty cells get weight zero
-
-# prop.table with margin = 1 divides each row by its row total,
-# converting weighted counts into within-stratum stock proportions.
-Primaryproportions <- prop.table(Primarystrata, margin = 1)
-
-cat("Problem 2d\n")
-cat("  Primaryproportions (each row sums to 1.0):\n")
-print(round(Primaryproportions, 3))
-# When SR is constant across strata, the 1/SR factors cancel in the ratio
-# and proportions equal the raw fish-count proportions.
-# The weighting only changes results when SR varies across strata or time.
-
-# ---- Extension: what breaks when SR varies across strata ----
-# In real trap data, SR often changes across the season as operators calibrate
-# the system or flows shift.  Ignoring that variation biases stock composition.
-
-SR_by_strat <- c(S1 = 0.15, S2 = 0.35, S3 = 0.50)   # early season has low SR
-
-set.seed(42)
-AllPrime_var <- tibble(
-  Strat = sample(strats, size = n_fish, replace = TRUE),
-  PGrp  = sample(stocks, size = n_fish, replace = TRUE),
-  SR    = SR_by_strat[sample(strats, size = n_fish, replace = TRUE)]
-)
-
-# Naïve: ignore SR entirely, just count fish per cell.
-raw_props <- prop.table(table(AllPrime_var$Strat, AllPrime_var$PGrp), margin = 1)
-
-# Correct: weight each fish by 1/SR before summing.
-wt_counts <- tapply(1 / AllPrime_var$SR,
-                    list(factor(AllPrime_var$Strat, levels = strats),
-                         factor(AllPrime_var$PGrp,  levels = stocks)), sum)
-wt_counts[is.na(wt_counts)] <- 0
-wt_props  <- prop.table(wt_counts, margin = 1)
-
-cat("\nExtension: variable SR across strata\n")
-cat("  Naïve (raw count) proportions for S1:\n")
-print(round(raw_props["S1", ], 3))
-cat("  Inverse-SR weighted proportions for S1:\n")
-print(round(wt_props["S1", ], 3))
-# S1 has the lowest SR so fish there are hardest to catch.
-# Naïve counts underrepresent S1 fish; inverse-SR weighting corrects this.
-# The bias is proportional to how much SR varies — in real LGD data the
-# difference can shift stock composition estimates by several percent.
-
 # ---- Forward pointer ----
-# Section 3 combines the a_d estimator (Section 1-2) with the nighttime-
+# Section 3 combines the a_d estimator (Sections 1-2) with the nighttime-
 # proportion estimator p_n_hat to form the total-escapement estimator
 #   a_t = a_d / (1 - p_n)
 # and derives its variance via the delta method.
+# Inverse-SR weighting (formerly problem 2d) is developed as problem 5a in
+# Section 5, where it serves as the explicit motivator for thetahat().

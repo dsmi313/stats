@@ -8,10 +8,42 @@ library(dplyr)
 library(tibble)
 
 #--------------------------------------
-# Problem 5a: Build toy SCRAPI-shaped data frames
-section5_problem_5a_fish <- function(stocks, strats, nfish) {
+# Problem 5a: Inverse-SR weighting -- the Horvitz-Thompson step inside thetahat()
+section5_problem_5a_fish <- function(stocks, strats, SR, n_fish) {
   cat("\n----------------------------------\n")
-  cat("Problem 5a: Build toy SCRAPI-shaped data frames\n")
+  cat("Problem 5a: Inverse-SR weighting (SCRAPI thetahat pattern, SMOLT trap)\n")
+
+  # Do not change the above code.
+  # ********* YOUR CODE HERE ***********
+
+  AllPrime <- tibble(
+    Strat = sample(strats, size = n_fish, replace = TRUE),
+    PGrp  = sample(stocks, size = n_fish, replace = TRUE),
+    SR    = SR
+  )
+  # SCRAPI line 94 reproduced:
+  Primarystrata <- tapply(1 / AllPrime$SR,
+                          list(factor(AllPrime$Strat, levels = strats),
+                               factor(AllPrime$PGrp,  levels = stocks)),
+                          sum)
+  Primarystrata[is.na(Primarystrata)] <- 0
+  Primaryproportions <- prop.table(Primarystrata, margin = 1)
+
+  cat("AllPrime rows =", n_fish, "  SR =", round(SR, 3), "\n")
+  cat("Primarystrata (inverse-SR weighted counts):\n")
+  print(round(Primarystrata, 1))
+  cat("Primaryproportions (row-normalized within stratum):\n")
+  print(round(Primaryproportions, 3))
+  invisible(list(AllPrime = AllPrime,
+                 Primarystrata = Primarystrata,
+                 Primaryproportions = Primaryproportions))
+}
+
+
+# Problem 5b: Build toy SCRAPI-shaped data frames
+section5_problem_5b_fish <- function(stocks, strats, nfish) {
+  cat("\n----------------------------------\n")
+  cat("Problem 5b: Build toy SCRAPI-shaped data frames\n")
 
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
@@ -43,10 +75,10 @@ section5_problem_5a_fish <- function(stocks, strats, nfish) {
 }
 
 
-# Problem 5b: Verbatim port of SCRAPI's FishWH weighted resample
-section5_problem_5b_fish <- function(FishWH, strats) {
+# Problem 5c: Verbatim port of SCRAPI's FishWH weighted resample
+section5_problem_5c_fish <- function(FishWH, strats) {
   cat("\n----------------------------------\n")
-  cat("Problem 5b: Weighted FishWH resample (SCRAPI lines 148-157)\n")
+  cat("Problem 5c: Weighted FishWH resample (SCRAPI lines 148-157)\n")
 
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
@@ -67,10 +99,10 @@ section5_problem_5b_fish <- function(FishWH, strats) {
 }
 
 
-# Problem 5c: Verbatim port of SCRAPI's FishDat weighted resample
-section5_problem_5c_fish <- function(FishDat, strats) {
+# Problem 5d: Verbatim port of SCRAPI's FishDat weighted resample
+section5_problem_5d_fish <- function(FishDat, strats) {
   cat("\n----------------------------------\n")
-  cat("Problem 5c: Weighted FishDat resample (SCRAPI lines 159-169)\n")
+  cat("Problem 5d: Weighted FishDat resample (SCRAPI lines 159-169)\n")
 
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
@@ -91,10 +123,10 @@ section5_problem_5c_fish <- function(FishDat, strats) {
 }
 
 
-# Problem 5d: Toy thetahat() matching SCRAPI's signature
-section5_problem_5d_fish <- function(passage, RearDat, Fish, Pgrps, strats) {
+# Problem 5e: Toy thetahat() matching SCRAPI's signature
+section5_problem_5e_fish <- function(passage, RearDat, Fish, Pgrps, strats) {
   cat("\n----------------------------------\n")
-  cat("Problem 5d: thetahat_toy() (SCRAPI lines 74-126)\n")
+  cat("Problem 5e: thetahat_toy() (SCRAPI lines 74-126)\n")
 
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
@@ -129,11 +161,11 @@ section5_problem_5d_fish <- function(passage, RearDat, Fish, Pgrps, strats) {
 }
 
 
-# Problem 5e: Full bootsmolt loop on toy data
-section5_problem_5e_fish <- function(passdata, RearData, AllPrime,
+# Problem 5f: Full bootsmolt loop on toy data
+section5_problem_5f_fish <- function(passdata, RearData, AllPrime,
                                      stocks, strats, B) {
   cat("\n----------------------------------\n")
-  cat("Problem 5e: Full bootsmolt loop (SCRAPI lines 128-189)\n")
+  cat("Problem 5f: Full bootsmolt loop (SCRAPI lines 128-189)\n")
 
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
@@ -154,10 +186,10 @@ section5_problem_5e_fish <- function(passdata, RearData, AllPrime,
       dailyStar <- data.frame(Stratum = passdata$Stratum,
                               Tally   = cntstar,
                               Ptrue   = passdata$Ptrue)
-      RearStar  <- section5_problem_5b_fish(RearData, strats)
-      indivStar <- section5_problem_5c_fish(AllPrime, strats)
+      RearStar  <- section5_problem_5c_fish(RearData, strats)
+      indivStar <- section5_problem_5d_fish(AllPrime, strats)
     }
-    eststar <- section5_problem_5d_fish(dailyStar, RearStar, indivStar,
+    eststar <- section5_problem_5e_fish(dailyStar, RearStar, indivStar,
                                         Pgrps = stocks, strats = strats)
     theta.b[b, ] <- c(eststar$TotalWild, eststar$Primaryests)
   }
@@ -170,17 +202,17 @@ section5_problem_5e_fish <- function(passdata, RearData, AllPrime,
 }
 
 
-# Problem 5f: Deliberately trigger Error 1
-section5_problem_5f_fish <- function() {
+# Problem 5g: Deliberately trigger Error 1
+section5_problem_5g_fish <- function() {
   cat("\n----------------------------------\n")
-  cat("Problem 5f: Trigger SCRAPI Error 1 with a rare stock\n")
+  cat("Problem 5g: Trigger SCRAPI Error 1 with a rare stock\n")
 
   # Do not change the above code.
   # ********* YOUR CODE HERE ***********
 
   stocks <- c("LOSALM", "CHMBLN", "IMNAHA")
   strats <- c("S1", "S2", "S3")
-  data <- section5_problem_5a_fish(stocks = stocks,
+  data <- section5_problem_5b_fish(stocks = stocks,
                                    strats = strats, nfish = 90L)
   # Add a rare stock confined to one stratum
   rare_stocks <- c(stocks, "LOCLWR")
@@ -191,8 +223,8 @@ section5_problem_5f_fish <- function() {
   )
   caught <- tryCatch({
     for (b in seq_len(50L)) {
-      indivStar <- section5_problem_5c_fish(AllPrime_rare, strats)
-      eststar <- section5_problem_5d_fish(data$passdata, data$RearData,
+      indivStar <- section5_problem_5d_fish(AllPrime_rare, strats)
+      eststar <- section5_problem_5e_fish(data$passdata, data$RearData,
                                           indivStar,
                                           Pgrps = rare_stocks,
                                           strats = strats)
@@ -225,7 +257,41 @@ B      <- 1000L                             # bootstrap iterations
 
 SR <- 5/6 * 0.45   # combined smolt-trap detection probability (constant here)
 
-# ---- Problem 5a: build toy SCRAPI-shaped data frames ----
+# ---- Problem 5a: inverse-SR weighting — the Horvitz-Thompson motivator ----
+# Before assembling thetahat(), understand the weighting step at its core.
+# At the smolt bypass, SR = SampleRate * GuidanceEfficiency is the probability
+# that a passing fish reaches the counter.  A fish caught when SR = 0.20 represents
+# 1/0.20 = 5 fish in the total run; one caught when SR = 0.40 represents 2.5 fish.
+# Summing 1/SR within each Strat × PGrp cell gives the Horvitz-Thompson estimator
+# for the number of fish in that cell — unbiased regardless of how SR varies.
+
+n_fish <- nfish   # same value, problem 5a uses n_fish as argument name
+
+AllPrime_5a <- tibble(
+  Strat = sample(strats, size = n_fish, replace = TRUE),
+  PGrp  = sample(stocks, size = n_fish, replace = TRUE),
+  SR    = SR
+)
+# One row per sampled fish.  SCRAPI calls this AllPrime (the full individual-fish table).
+
+# SCRAPI line 94: tapply sums 1/SR within every Strat × PGrp cell.
+Primarystrata_5a <- tapply(1 / AllPrime_5a$SR,
+                           list(factor(AllPrime_5a$Strat, levels = strats),
+                                factor(AllPrime_5a$PGrp,  levels = stocks)),
+                           sum)
+Primarystrata_5a[is.na(Primarystrata_5a)] <- 0
+
+# Row-normalize: convert weighted counts into within-stratum stock proportions.
+Primaryproportions_5a <- prop.table(Primarystrata_5a, margin = 1)
+
+cat("Problem 5a: Primaryproportions (each row sums to 1.0):\n")
+print(round(Primaryproportions_5a, 3))
+# When SR is constant, 1/SR cancels in the ratio and proportions equal raw counts.
+# When SR varies by stratum (common in real data), the weighting corrects for
+# unequal detectability.  This exact tapply(1/SR, ...) call appears verbatim
+# inside thetahat() as problem 5e — now you know why it's there.
+
+# ---- Problem 5b: build toy SCRAPI-shaped data frames ----
 # SCRAPI's bootsmolt() receives three data frames.  We build toy versions
 # so every subsequent problem has realistic inputs.
 
@@ -255,10 +321,10 @@ passdata <- tibble(
 )
 # passdata: daily passage counts from the trap counter (SCRAPI passdata layout).
 
-cat("Problem 5a: data frames built\n")
+cat("Problem 5b: data frames built\n")
 cat("  AllPrime rows =", nrow(AllPrime), "  passdata rows =", nrow(passdata), "\n")
 
-# ---- Problem 5b: FishWH weighted resample (SCRAPI lines 148-157) ----
+# ---- Problem 5c: FishWH weighted resample (SCRAPI lines 148-157) ----
 # The nonparametric bootstrap resamples fish within each stratum to propagate
 # rearing-type composition uncertainty.  Fish are resampled WITH REPLACEMENT
 # using their True (inverse detection probability) as sampling weights — fish
@@ -279,9 +345,9 @@ for (h in strats) {
   wkstar <- justwk[i, ]   # bootstrap sample for this stratum
   if (H == 0) { WHstar <- wkstar; H <- 1 } else { WHstar <- rbind(WHstar, wkstar) }
 }
-cat("Problem 5b: resampled FishWH rows =", nrow(WHstar), "\n")
+cat("Problem 5c: resampled FishWH rows =", nrow(WHstar), "\n")
 
-# ---- Problem 5c: FishDat weighted resample (SCRAPI lines 159-169) ----
+# ---- Problem 5d: FishDat weighted resample (SCRAPI lines 159-169) ----
 # Same logic as 5b but applied to AllPrime (individual genetic/PBT records).
 # Column names differ: Strat instead of Stratum, SR instead of True.
 
@@ -297,9 +363,9 @@ for (h in strats) {
   wkstar <- justwk[i, ]
   if (H == 0) { DatStar <- wkstar; H <- 1 } else { DatStar <- rbind(DatStar, wkstar) }
 }
-cat("Problem 5c: resampled FishDat rows =", nrow(DatStar), "\n")
+cat("Problem 5d: resampled FishDat rows =", nrow(DatStar), "\n")
 
-# ---- Problem 5d: thetahat_toy — the core estimator ----
+# ---- Problem 5e: thetahat_toy — the core estimator ----
 # thetahat() translates raw passage counts and individual fish assignments
 # into a total wild smolt estimate and per-stock wild estimates.
 #
@@ -312,7 +378,7 @@ cat("Problem 5c: resampled FishDat rows =", nrow(DatStar), "\n")
 #   HNCWprop   = row-normalise → P(Wild | stratum)
 #   WildStrata = P(Wild | stratum) * bystrata
 #
-# Step 3: allocate wild fish to stocks using inverse-SR weights (same as Section 2d).
+# Step 3: allocate wild fish to stocks using inverse-SR weights (same as problem 5a).
 #   Primarystrata      = tapply(1/SR, list(Strat, PGrp), sum)
 #   Primaryproportions = row-normalise → P(stock | stratum)
 #   Primaryests        = Primaryproportions' %*% WildStrata
@@ -338,14 +404,14 @@ Primaryproportions[is.na(Primaryproportions)] <- 0
 Primaryests <- as.vector(t(Primaryproportions) %*% as.vector(WildStrata))
 names(Primaryests) <- stocks
 
-cat("Problem 5d: TotalWild =", round(TotalWild),
+cat("Problem 5e: TotalWild =", round(TotalWild),
     "  Primaryests:", round(Primaryests), "\n")
 # TotalWild ≈ ndays * 200 * SR * P(Wild) — sanity check.
 
-# ---- Problem 5e: full bootsmolt loop ----
+# ---- Problem 5f: full bootsmolt loop ----
 # Iteration b=1 uses the real data (no resampling) — this gives the point
 # estimate.  Iterations b>1 resample counts (4a pattern) AND resample fish
-# (5b/5c) to capture ALL sources of uncertainty simultaneously.
+# (5c/5d) to capture ALL sources of uncertainty simultaneously.
 
 p       <- 1L + length(stocks)   # one TotalWild + one per stock
 theta.b <- matrix(numeric(p * B), ncol = p)
@@ -361,21 +427,21 @@ for (b in seq_len(B)) {
                               Tally   = cntstar,
                               Ptrue   = passdata$Ptrue)
     # Resample rearing-type fish (propagates Wild/HNC uncertainty).
-    RearStar   <- section5_problem_5b_fish(RearData, strats)
+    RearStar   <- section5_problem_5c_fish(RearData, strats)
     # Resample stock-assignment fish (propagates stock-proportion uncertainty).
-    indivStar  <- section5_problem_5c_fish(AllPrime, strats)
+    indivStar  <- section5_problem_5d_fish(AllPrime, strats)
   }
-  eststar     <- section5_problem_5d_fish(dailyStar, RearStar, indivStar,
+  eststar     <- section5_problem_5e_fish(dailyStar, RearStar, indivStar,
                                           Pgrps = stocks, strats = strats)
   theta.b[b, ] <- c(eststar$TotalWild, eststar$Primaryests)
 }
 CI <- t(apply(theta.b, 2, quantile, c(0.025, 0.975)))
 rownames(CI) <- c("WildSmolts", stocks)
 colnames(CI) <- c("LCI", "UCI")
-cat("Problem 5e: 95% bootstrap CIs\n")
+cat("Problem 5f: 95% bootstrap CIs\n")
 print(round(CI))
 
-# ---- Problem 5f: deliberately trigger Error 1 ----
+# ---- Problem 5g: deliberately trigger Error 1 ----
 # SCRAPI pre-allocates theta.b with ncol = length(Pgrps).  If a rare stock
 # disappears from a bootstrap resample, thetahat() returns a shorter vector
 # and the assignment theta.b[b,] <- c(...) recycles or errors.
@@ -390,8 +456,8 @@ AllPrime_rare <- bind_rows(
 
 caught <- tryCatch({
   for (b in seq_len(50L)) {
-    indivStar <- section5_problem_5c_fish(AllPrime_rare, strats)
-    eststar   <- section5_problem_5d_fish(passdata, RearData, indivStar,
+    indivStar <- section5_problem_5d_fish(AllPrime_rare, strats)
+    eststar   <- section5_problem_5e_fish(passdata, RearData, indivStar,
                                           Pgrps = rare_stocks, strats = strats)
     theta.b_rare <- numeric(5L)
     theta.b_rare[] <- c(eststar$TotalWild, eststar$Primaryests)
@@ -399,7 +465,7 @@ caught <- tryCatch({
   "no error (lucky path)"
 }, error   = function(e) conditionMessage(e),
    warning = function(w) conditionMessage(w))
-cat("Problem 5f caught:", caught, "\n")
+cat("Problem 5g caught:", caught, "\n")
 
 # ---- Extension: what Error 1 looks like with a fixed ncol ----
 # In production SCRAPI, theta.b has a fixed number of columns set before the
@@ -412,8 +478,8 @@ theta_bad  <- matrix(NA_real_, nrow = 10L, ncol = p_rare)
 
 silent_recycle <- tryCatch({
   for (b in seq_len(10L)) {
-    indivStar <- section5_problem_5c_fish(AllPrime_rare, strats)
-    eststar   <- section5_problem_5d_fish(passdata, RearData, indivStar,
+    indivStar <- section5_problem_5d_fish(AllPrime_rare, strats)
+    eststar   <- section5_problem_5e_fish(passdata, RearData, indivStar,
                                           Pgrps = rare_stocks, strats = strats)
     short_vec <- c(eststar$TotalWild, eststar$Primaryests)
     theta_bad[b, ] <- short_vec   # may recycle if length(short_vec) < p_rare
@@ -422,7 +488,7 @@ silent_recycle <- tryCatch({
 }, warning = function(w) paste("warning:", conditionMessage(w)),
    error   = function(e) paste("error:",   conditionMessage(e)))
 cat("Extension recycling outcome:", silent_recycle, "\n")
-# The fix: always run section5_problem_5f_fish() to catch rare stocks BEFORE
+# The fix: always run section5_problem_5g_fish() to catch rare stocks BEFORE
 # calling SCRAPI(), or consolidate rare stocks into an "Other" category.
 
 # ---- Forward pointer ----

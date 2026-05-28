@@ -12,6 +12,12 @@
 #---------------------------------------------------------
 # Section 7 ----
 
+# softmax() helper -- needed by problems 7b and 7c.
+# The solutions file defines it at the top level.  Define it here before
+# sourcing, or uncomment the line below and paste it inside each function.
+#
+# softmax <- function(x) { e <- exp(x - max(x)); e / sum(e) }
+
 # Problem 7a: simulate three stocks with rmultinom(); verify MLE = observed proportions
 section7_problem_7a_fish <- function(n = 200, props = c(0.6, 0.3, 0.1)) {
   cat("\n----------------------------------\n")

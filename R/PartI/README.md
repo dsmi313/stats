@@ -42,10 +42,10 @@ Problems and what they mirror:
 | Section | Problems | Mirrors |
 | --- | --- | --- |
 | 1 | 1a single-day a_d_hat = w/r; 1b escapeLGD wc tibble; 1c vectorized parametric bootstrap; 1d replicated unbiasedness | `night_fall_reascend_wc_binom.R:130-150` |
-| 2 | 2a replicated MLE centering; 2b grid log-likelihood; 2c optim continuous relaxation; 2d inverse-SR weighting (smolt-trap) | `SCRAPI.r:74-126` |
+| 2 | 2a replicated MLE centering; 2b grid log-likelihood; 2c optim continuous relaxation | `SCRAPI.r:74-126` |
 | 3 | 3a layer-1 variance; 3b layer-2 variance; 3c delta method; 3d fallback joint MLE (escapeLGD verbatim); 3e nightFall bootstrap | `fallback_reascend_likelihood.R`; `night_fall_reascend_wc_binom.R:71-110` |
 | 4 | 4a bootsmolt daily-loop (verbatim); 4b vectorized escapeLGD; 4c coverage check; 4d plot bootstrap distribution | `SCRAPI.r:139-145`; `night_fall_reascend_wc_binom.R:150` |
-| 5 | 5a toy data frames; 5b FishWH resample (verbatim); 5c FishDat resample (verbatim); 5d thetahat_toy; 5e full bootsmolt; 5f Error 1 trigger | `SCRAPI.r:74-126, 128-189` |
+| 5 | 5a inverse-SR weighting (Horvitz-Thompson); 5b toy data frames; 5c FishWH resample (verbatim); 5d FishDat resample (verbatim); 5e thetahat_toy; 5f full bootsmolt; 5g Error 1 trigger | `SCRAPI.r:74-126, 128-189` |
 | 6 | 6a simulate shifting p_n; 6b Cpattern + pooled vs stratified; 6c Collaps loop (verbatim); 6d Error 3 trigger; 6e parametric bootstrap CI | `SCRAPI.r:217, 254-269` |
 | 7 | 7a rmultinom three-stock simulation; 7b multinomial log-likelihood + optim(); 7c joint two-sample log-likelihood (D&H skeleton); 7d nonparametric bootstrap CI | `composition_estimation_utils.R:62-66` |
 
@@ -65,7 +65,6 @@ Use these as a quick self-check before moving to the next section.
 - [ ] Write and evaluate the log-likelihood on a parameter grid.
 - [ ] Compare grid-search intuition to `optim()` output for the same model.
 - [ ] Explain why the continuous-relaxation MLE is centered near truth in simulation.
-- [ ] Interpret inverse-SR weighting in the smolt-trap context.
 
 ### Section 3 checklist
 - [ ] Separate and compute layer-1 vs layer-2 uncertainty terms.
@@ -80,6 +79,7 @@ Use these as a quick self-check before moving to the next section.
 - [ ] Read and explain a bootstrap distribution plot (shape, center, spread).
 
 ### Section 5 checklist
+- [ ] Explain why summing 1/SR within each Strat × PGrp cell gives an unbiased composition estimate.
 - [ ] Build toy FishWH/FishDat-style data frames used by resampling code.
 - [ ] Perform nonparametric resampling for FishWH and FishDat (verbatim logic).
 - [ ] Compute `thetahat` on resampled data and aggregate bootstrap totals.
@@ -114,8 +114,7 @@ the studio-to-section map.
    git clone https://github.com/delomast/escapeLGD ../escapeLGD
    ```
 
-2. Work through one section. Each prints results to the console and
-   saves figures under `docs/figures/PartI/`.
+2. Work through one section. Each prints results to the console.
 
 3. Open the cited source file in parallel and walk through the lines
    listed in the "Repo pointer" header of the section script.
