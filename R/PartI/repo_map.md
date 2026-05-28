@@ -9,20 +9,20 @@ mirrors. This table is the consolidated index.
 
 | Part I section | What you build | SCOBI source (file:lines) |
 | --- | --- | --- |
-| 2. MLE for a_d | smolt-trap `AllPrime` table with Strat, PGrp, SR (SCRAPI thetahat input) | `R/SCRAPI.r:284-313` |
 | 2. MLE for a_d | `dailypass = Tally / Ptrue` (per-day MLE; SMOLT trap, Ptrue includes GE) | `R/SCRAPI.r:75` |
 | 4. Parametric bootstrap | SCRAPI smolt `passdata = data.frame(Stratum, Tally, Ptrue)` | `R/SCRAPI.r:232` |
 | 4. Parametric bootstrap | SCRAPI `pass$true = SampleRate * GuidanceEfficiency` (smolt only) | `R/SCRAPI.r:227` |
-| 2. MLE for a_d | Inverse-SR weighting `mApply(1/SR, ..., sum)` | `R/SCRAPI.r:78, 94, 103` |
-| 2. MLE for a_d | `prop.table(Freqs, margin = ...)` | `R/SCRAPI.r:96, 105` |
+| 5. Nonparametric bootstrap | smolt-trap `AllPrime` table with Strat, PGrp, SR (problem 5a, thetahat input) | `R/SCRAPI.r:284-313` |
+| 5. Nonparametric bootstrap | Inverse-SR weighting `mApply(1/SR, ..., sum)` (problem 5a opener) | `R/SCRAPI.r:78, 94, 103` |
+| 5. Nonparametric bootstrap | `prop.table(Freqs, margin = ...)` | `R/SCRAPI.r:96, 105` |
 | 4. Parametric bootstrap | `cntstar <- rbinom(1, dailypass[i], Ptrue[i])` daily loop | `R/SCRAPI.r:141-145` |
 | 4. Parametric bootstrap | `dailyStar <- data.frame(Stratum, Tally, Ptrue)` | `R/SCRAPI.r:145` |
-| 5. Nonparametric bootstrap | `theta.b <- matrix(numeric(p*B), ncol = p)` setup | `R/SCRAPI.r:131` |
-| 5. Nonparametric bootstrap | Weighted FishWH resample per stratum | `R/SCRAPI.r:148-157` |
-| 5. Nonparametric bootstrap | Weighted FishDat resample per stratum | `R/SCRAPI.r:159-169` |
-| 5. Nonparametric bootstrap | `theta.b[b, ] <- c(...)` row-store | `R/SCRAPI.r:175-176` |
-| 5. Nonparametric bootstrap | The Error 1 (theta.b dimension mismatch) trigger | `R/SCRAPI.r:175` |
-| 5. Nonparametric bootstrap | `thetahat_toy()` mirrors the full thetahat function | `R/SCRAPI.r:74-126` |
+| 5. Nonparametric bootstrap | `theta.b <- matrix(numeric(p*B), ncol = p)` setup (problem 5f) | `R/SCRAPI.r:131` |
+| 5. Nonparametric bootstrap | Weighted FishWH resample per stratum (problem 5c) | `R/SCRAPI.r:148-157` |
+| 5. Nonparametric bootstrap | Weighted FishDat resample per stratum (problem 5d) | `R/SCRAPI.r:159-169` |
+| 5. Nonparametric bootstrap | `theta.b[b, ] <- c(...)` row-store (problem 5f) | `R/SCRAPI.r:175-176` |
+| 5. Nonparametric bootstrap | Error 1 (theta.b dimension mismatch) trigger (problem 5g) | `R/SCRAPI.r:175` |
+| 5. Nonparametric bootstrap | `thetahat_toy()` mirrors the full thetahat function (problem 5e) | `R/SCRAPI.r:74-126` |
 | 6. Stratification | `Cpattern <- unique(cbind(pass$Week, pass$Collaps))` | `R/SCRAPI.r:217` |
 | 6. Stratification | Collaps assignment by date match (Error 3 trigger) | `R/SCRAPI.r:254-259` |
 | 6. Stratification | True-rate assignment by date match | `R/SCRAPI.r:262-269` |

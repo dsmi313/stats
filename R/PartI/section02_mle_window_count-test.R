@@ -15,9 +15,3 @@ section2_problem_2b_fish(w_obs = w_obs, r_sample = 5/6, a_d_max = 700L)
 
 # Problem 2c: optim continuous-relaxation MLE
 section2_problem_2c_fish(w_obs = w_obs, r_sample = 5/6)
-
-# Problem 2d: inverse-SR weighting (smolt trap)
-section2_problem_2d_fish(stocks = c("LOSALM", "CHMBLN", "IMNAHA"),
-                         strats = c("S1", "S2", "S3"),
-                         SR     = 5/6 * 0.45,
-                         n_fish = 90L)

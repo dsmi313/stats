@@ -1,14 +1,13 @@
 #---------------------------------------------------------
 # File:   section02_mle_window_count.R
-# Part I, Section 2 - MLE and inverse-SR weighting
+# Part I, Section 2 - Binomial MLE for the window count
 #
-# Adults (Problems 2a-2c): a_d_hat = w / r is the Binomial MLE.
-# Smolts (Problem 2d): SCRAPI's thetahat() weighs each sampled fish by
-# 1/SR where SR = SampleRate * GuidanceEfficiency for the smolt trap.
+# Problems 2a-2c: a_d_hat = w / r is the Binomial MLE; verified by
+# grid search and continuous relaxation with optim().
+# Inverse-SR weighting (formerly 2d) moved to Section 5, problem 5a.
 #
 # Repo pointer (SCOBI/R/SCRAPI.r):
 #   line 75:  dailypass <- passage$Tally / passage$Ptrue    (per-day MLE)
-#   line 94:  Primarystrata <- mApply(1/Fish$SR, list(Strat, PGrp), sum)
 #
 # Place every answer inside the wrapper functions below.
 # Run section02_mle_window_count-test.R after sourcing this file.
@@ -71,22 +70,7 @@ section2_problem_2c_fish <- function(w_obs, r_sample) {
 }
 
 
-# Problem 2d: Inverse-SR weighting (SCRAPI smolt-trap thetahat pattern)
-section2_problem_2d_fish <- function(stocks, strats, SR, n_fish) {
-  cat("\n----------------------------------\n")
-  cat("Problem 2d: Inverse-SR weighting (SCRAPI thetahat pattern, SMOLT trap)\n")
-
-  # Arguments:
-  #   stocks = character vector of stock names (PGrp values)
-  #   strats = character vector of stratum names (Strat values)
-  #   SR     = combined smolt-trap detection probability (t_d * e_sd)
-  #   n_fish = number of sampled fish
-  #
-  # Build an AllPrime tibble with columns Strat, PGrp, SR (one row per
-  # fish). Use tapply(1/SR, list(Strat, PGrp), sum) to reproduce SCRAPI
-  # line 94, then row-normalize to get within-stratum proportions.
-
-  # Do not change the above code.
-  # ********* YOUR CODE HERE ***********
-
-}
+# Problem 2d: → moved to Section 5 as problem 5a.
+# Inverse-SR weighting belongs alongside thetahat() and the smolt-trap
+# machinery it serves.  See section05_nonparametric_bootstrap.R,
+# section5_problem_5a_fish().
