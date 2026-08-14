@@ -3,36 +3,36 @@
 # simulation says it delivers, and how the adult interval compares.
 
 # The SCRAPI2 interval stacks a count bootstrap on posterior draws of GE (and
-# GSI). It claims about 90% coverage of true escapement, but only if the
-# posteriors it is fed are correct. This study checks that claim three ways.
+# GSI). It claims about 90% coverage of true escapement, but only if the GE model
+# it is fed is centered right. To test that fairly, the true GE varies run to run
+# from the very distribution a calibrated interval integrates over.
 truth <- list(N = 6000L, rate = 0.05, detect = 0.17)  # detect = GE or night rate
 set.seed(8)
 
-# One coverage engine. draw_detect(B) supplies the B detection values the interval
-# integrates over: a GE posterior (smolt) or a bootstrapped rate (adult). The
-# count bootstrap uses the point detection, the divisor uses the draws, exactly
-# as SCRAPI2 uses est_daily against ge_day_mat[, b].
-run_cov <- function(draw_detect, nsim = 300, B = 400, alpha = 0.1) {
-  N <- truth$N; R <- truth$rate; d0 <- truth$detect
-  hit <- logical(nsim)
+# One coverage engine. post_draw(B, d_true) supplies the B detection values the
+# interval integrates over. The count bootstrap uses the point detection, the
+# divisor uses the draws, exactly as SCRAPI2 uses est_daily against ge_day_mat[, b].
+run_cov <- function(post_draw, nsim = 500, B = 400, alpha = 0.1, conc = 400) {
+  N <- truth$N; R <- truth$rate; hit <- logical(nsim)
   for (s in seq_len(nsim)) {
-    y    <- rbinom(1, N, R * d0)
-    d    <- draw_detect(B)
-    dhat <- mean(d)
-    yb   <- rbinom(B, round(y / (R * dhat)), R * dhat)
-    ci   <- quantile(yb / (R * d), c(alpha / 2, 1 - alpha / 2))
+    d_true <- rbeta(1, truth$detect * conc, (1 - truth$detect) * conc)
+    y  <- rbinom(1, N, R * d_true)
+    d  <- post_draw(B, d_true)
+    dh <- mean(d)
+    yb <- rbinom(B, round(y / (R * dh)), R * dh)
+    ci <- quantile(yb / (R * d), c(alpha / 2, 1 - alpha / 2))
     hit[s] <- ci[1] <= N && N <= ci[2]
   }
   mean(hit)
 }
 
-# A Beta posterior with a target mean and modest spread (concentration 200).
-beta_post <- function(mean_d, conc = 200) function(B) rbeta(B, mean_d * conc, (1 - mean_d) * conc)
-
+# A GE posterior fixed at mean m (integrates the population GE spread), and an
+# adult-style bootstrap of a night rate estimated from 250 PIT tags.
+ge_post <- function(m) function(B, dt) rbeta(B, m * 400, (1 - m) * 400)
 res <- c(
-  "smolt GE (calibrated)"   = run_cov(beta_post(truth$detect)),
-  "smolt GE (biased +10%)"  = run_cov(beta_post(truth$detect * 1.10)),
-  "adult night (bootstrap)" = run_cov(function(B) rbinom(B, 250, truth$detect) / 250))
+  "smolt GE (calibrated)"   = run_cov(ge_post(truth$detect)),
+  "smolt GE (biased +10%)"  = run_cov(ge_post(truth$detect * 1.10)),
+  "adult night (bootstrap)" = run_cov(function(B, dt) { ph <- rbinom(1, 250, dt) / 250; rbinom(B, 250, ph) / 250 }))
 print(round(res, 3))
 
 png("figs/session08_interval_coverage.png", width = 900, height = 600)
@@ -41,9 +41,10 @@ barplot(res, ylim = c(0, 1), col = "steelblue", las = 1, ylab = "coverage",
 abline(h = 0.90, col = "firebrick", lwd = 3)
 dev.off()
 
-# Exercise. Push the bias to +25% and watch coverage collapse, then set it back to
-# 0 and widen the posterior spread instead (concentration 40). Say out loud which
-# failure a wider-but-centered posterior fixes and which it does not.
+# Exercise. Push the bias to 1.20 and watch coverage fall further, then set it
+# back to 1.00 and instead widen the true-GE spread (conc = 100) while leaving the
+# posterior at conc = 400. Say out loud which failure is a centering problem and
+# which is a spread problem, and which one honesty about the model can fix.
 
 # Locate.
 # smoltEASE (smolts): SCRAPI2() builds its CI as quantile(theta.b, c(alph/2,

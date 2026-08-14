@@ -29,17 +29,20 @@ plot(grid, ll, type = "l", lwd = 2, xlim = c(0.05, 0.18), ylim = c(cut - 3, max(
 abline(h = cut, col = "steelblue", lwd = 2, lty = 2)
 abline(v = ci, col = "steelblue", lwd = 2, lty = 3)
 
-# Panel 3: the coverage result. Does the 90% interval cover 90%?
+# Panel 3: the coverage result. Does the 90% interval cover 90%? The true GE
+# varies run to run, so the calibrated interval sits near nominal and the biased
+# one under-covers (the session 8 engine, condensed).
 cov <- function(mean_d) {
-  N <- 6000; R <- 0.05; d0 <- 0.17; h <- logical(150)
-  for (s in 1:150) {
-    y <- rbinom(1, N, R * d0); d <- rbeta(400, mean_d * 200, (1 - mean_d) * 200)
+  N <- 6000; R <- 0.05; d0 <- 0.17; h <- logical(500)
+  for (s in 1:500) {
+    dt <- rbeta(1, d0 * 400, (1 - d0) * 400); y <- rbinom(1, N, R * dt)
+    d <- rbeta(400, mean_d * 400, (1 - mean_d) * 400)
     dh <- mean(d); yb <- rbinom(400, round(y / (R * dh)), R * dh)
     ci <- quantile(yb / (R * d), c(.05, .95)); h[s] <- ci[1] <= N && N <= ci[2]
   }
   mean(h)
 }
-barplot(c(calibrated = cov(0.17), `biased +10%` = cov(0.187)), ylim = c(0, 1),
+barplot(c(calibrated = cov(0.17), `biased +20%` = cov(0.204)), ylim = c(0, 1),
         col = "steelblue", ylab = "coverage", main = "Does 90% cover 90%?")
 abline(h = 0.90, col = "firebrick", lwd = 3)
 dev.off()

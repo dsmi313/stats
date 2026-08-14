@@ -14,7 +14,7 @@ y     <- rbinom(truth$n_strata, nsz, psi)   # tagged fish taking the bypass rout
 
 # Maximum likelihood in glmmTMB (falls back to glm if glmmTMB is absent).
 if (requireNamespace("glmmTMB", quietly = TRUE)) {
-  m  <- glmmTMB::glmmTMB(cbind(y, nsz - y) ~ spill_std, family = binomial)
+  m  <- glmmTMB::glmmTMB(cbind(y, nsz - y) ~ spill_std, family = binomial, data = data.frame(y, nsz, spill_std))
   co <- summary(m)$coefficients$cond
 } else {
   message("glmmTMB not installed; using glm for the ML fit.")
