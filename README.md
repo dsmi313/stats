@@ -17,8 +17,12 @@ the exact production file and function that does the same job.
    session format, and the nine sessions in order.
 2. Read `docs/session02_shared_skeleton.md` for the component-by-component
    comparison of the adult and smolt estimators. That table is the spine.
-3. Work the sessions in order in `R/`. Each writes a plain-English explanation
-   to `docs/sessionNN_explain.md`.
+3. Work the sessions in order in `R/`. Run each from the repository root
+   (`source("R/session01_count_expansion.R")`); each prints its recovery, writes
+   a figure to `figs/`, and writes a plain-English explanation to
+   `docs/sessionNN_explain.md`. Session 2 also writes the skeleton table to
+   `docs/session02_shared_skeleton.md`. Base R throughout; only session 6 uses an
+   extra package (`glmmTMB`, with a `glm` fallback).
 
 ## What is not here
 
