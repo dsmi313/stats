@@ -1,31 +1,32 @@
 # stats
 
-A structured learning and development repository for SCRAPI, EASE, and smolt abundance estimation.
+Working repository for a 45-minute talk to IDFG colleagues: *"uncertainty in
+escapement estimation at Lower Granite: adults and smolts, one framework."*
 
-## Goal
+## What this is
 
-This repository captures a planned pathway from MIT 18.05-style statistical foundations through real fisheries examples, SCRAPI/EASE internals, bootstrap and likelihood estimation, and a Bayesian integrated model.
+Nine self-contained R sessions that reverse engineer the two production
+escapement tools at Lower Granite Dam — `escapeLGD` (EASE, adults) and
+`smoltEASE` (SCRAPI2, smolts) — treating them as one estimator structure applied
+at two life stages. Each session writes a toy version by hand, then points at
+the exact production file and function that does the same job.
 
-## What is included
+## Where to start
 
-- `PLAN.md`: the full detailed learning plan, session structure, and resources.
-- `R/PartI` .. `R/PartVIII`: folders for R code, simulations, and analysis for each major section.
-- `docs/`: documentation, notes, and reference material.
+1. Read `PLAN.md`. It states the one idea the talk is built on, the five-part
+   session format, and the nine sessions in order.
+2. Read `docs/session02_shared_skeleton.md` for the component-by-component
+   comparison of the adult and smolt estimators. That table is the spine.
+3. Work the sessions in order in `R/`. Each writes a plain-English explanation
+   to `docs/sessionNN_explain.md`.
 
-## How to use this repo
+## What is not here
 
-1. Read `PLAN.md` to understand the overall workflow and section goals.
-2. Add or expand R scripts inside the appropriate `R/Part*` folders.
-3. Use `docs/` for notes, diagnostics, and audit write-ups.
+Everything cut from the earlier construction-oriented plan is in `BACKLOG.md`,
+each item with one line saying why it was cut. Nothing was deleted.
 
-## Suggested next files
+## Ground rules
 
-- `R/PartI/section01_binomial_window_count.R`
-- `R/PartI/section02_mle_window_count.R`
-- `R/PartII/section08_pbt_bias.R`
-- `R/PartIII/section11_scrapi_ratio_estimator.R`
-- `R/PartVIII/section22_integrated_bayesian_model.R`
-
-## Notes
-
-This repository is intended as both a learning notebook and a code base for developing the `smoltEASE` integrated model in a reproducible way.
+No script over 80 lines or over a minute to run. No banner comments. No
+placeholder headings. No dates — those get added by hand.
+</content>
