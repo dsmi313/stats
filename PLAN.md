@@ -151,8 +151,11 @@ by-hand likelihood work implies; the Bayesian credible interval is what
 **Objective:** explain what guidance efficiency is, why it needs its own model,
 and what fitting it by maximum likelihood versus Bayesian buys and costs.
 
-Fit the GE relationship both ways: maximum likelihood in `glmmTMB` and Bayesian.
-First on simulated data with known truth, then on the real MY2025 data.
+Fit the GE relationship both ways on simulated data with known truth: maximum
+likelihood in `glmmTMB` and Bayesian by hand. Simulate-only, so the truth stays
+known and the two fits can be judged against it; the truth values are drawn to
+look like the real MY2025 GE-versus-spill shape (see `data/`) without the script
+depending on the data to run.
 
 **Locate:** `smoltEASE` `fit_ge_model()` (JAGS multistate mark-recapture for the
 route-selection probability) and `prep_ge_data()` in `R/fit_ge_model.R` and
@@ -218,5 +221,7 @@ this session selects and finishes figures already produced.
   session writes.
 - `docs/session02_shared_skeleton.md` — the component-by-component comparison
   table.
+- `data/` — real MY2025 steelhead inputs, kept as the reference shapes the
+  simulations imitate. No session depends on them to run; see `data/README.md`.
 </content>
 </invoke>
