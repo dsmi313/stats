@@ -1,34 +1,43 @@
-# Session 7: the real run, checked by hand
-# Objective: explain that the whole smolt machine is, at bottom, the session-1
-# move applied to real MY2025 inputs: expand one day by hand and watch production
-# reproduce it, then watch those daily expansions sum to the number SCRAPI2 prints.
+# Session 7: the real run is the same arithmetic
+# Objective: show that on real MY2025 inputs the smolt machine is the session-1
+# move and nothing more. Expand a real day by the plug-in formula, sum its week,
+# and get exactly the weekly number SCRAPI2 prints, because it is the identical
+# calculation surfaced, not an independent check of it.
 
 # No simulation. This session reads the real MY2025 steelhead files in data/ and
 # runs production smoltEASE::SCRAPI2() on them. The passage file dates are
 # %m/%d/%Y and the trap file dates are %Y-%m-%d; SCRAPI2's tryFormats parses both,
 # so we do not touch them. Guidance efficiency is the fixed column in the passage
-# file (no geDraws), so the point expansion is deterministic and hand-checkable.
+# file (no geDraws), so the expansion is deterministic.
 if (!requireNamespace("smoltEASE", quietly = TRUE))
   stop("install smoltEASE (github.com/dsmi313/smoltEASE) to run this session")
 
-pass <- read.csv("data/MY2025_STHD_passage.csv")
-cat(sprintf("real inputs: %d passage days, %d trapped fish\n",
-            nrow(pass), nrow(read.csv("data/MY2025_STHD_trapData.csv"))))
+pass  <- read.csv("data/MY2025_STHD_passage.csv")
+ntrap <- nrow(read.csv("data/MY2025_STHD_trapData.csv"))
+cat(sprintf("real inputs: %d passage days, %d trapped fish\n", nrow(pass), ntrap))
 
 # Build. The daily expansion is exactly session 1: count over the fraction seen,
-# where the fraction seen is SampleRate times GuidanceEfficiency.
-hand_day <- pass$SampleCount / (pass$SampleRate * pass$GuidanceEfficiency)
-sel      <- which(pass$Week == 26)   # Week 26 is a single day, so it is its own week
-hand_one <- hand_day[sel]
-hand_tot <- sum(hand_day)
-cat(sprintf("chosen day %s: %d counted / (%.2f * %.3f) = %.2f fish\n",
-            pass$SampleEndDate[sel], pass$SampleCount[sel], pass$SampleRate[sel],
+# where the fraction seen is SampleRate times GuidanceEfficiency. This is line for
+# line what SCRAPI2 does at SCRAPI2.R:306, pass$estimated <- SampleCount / true.
+hand_day  <- pass$SampleCount / (pass$SampleRate * pass$GuidanceEfficiency)
+sel       <- which(pass$SampleEndDate == "05/12/2025")  # a mid-run day near the peak
+wsel      <- pass$Week[sel]
+wk_rows   <- which(pass$Week == wsel)
+hand_one  <- hand_day[sel]
+hand_week <- sum(hand_day[wk_rows])
+hand_tot  <- sum(hand_day)
+cat(sprintf("chosen day %s (Week %d): %d counted / (%.2f * %.3f) = %.0f fish\n",
+            pass$SampleEndDate[sel], wsel, pass$SampleCount[sel], pass$SampleRate[sel],
             pass$GuidanceEfficiency[sel], hand_one))
+cat(sprintf("hand sum over Week %d (%d days): %.0f\n", wsel, length(wk_rows), hand_week))
 
 # Recover. Run SCRAPI2 on the real files. B is dropped far below the 5000 default
-# purely for runtime (this keeps the session under a minute); a smaller B only
-# widens and roughens the bootstrap CI, it does not move the point expansion we
-# check here, which is deterministic given fixed GE.
+# purely for runtime; a smaller B only widens the bootstrap CI, it does not move
+# the deterministic point expansion checked here.
+# SCRAPI2 returns list(CI, bootstrap) and neither element carries the per-week
+# totals, so the only route to its weekly number is parsing the console output.
+# This parsing is therefore coupled to SCRAPI2's print format: the by-week header
+# and its two-line print at SCRAPI2.R:325, and the grand total at line 327.
 options(width = 10000)
 invisible(capture.output(
   res <- smoltEASE::SCRAPI2(smoltData   = "data/MY2025_STHD_trapData.csv",
@@ -39,26 +48,30 @@ invisible(capture.output(
 gt <- as.numeric(sub("^Total smolts:\\s*", "", grep("^Total smolts:", out, value = TRUE)))
 h  <- grep("Total smolts by week:", out)
 wk <- setNames(scan(text = out[h + 2], quiet = TRUE), scan(text = out[h + 1], quiet = TRUE))
-cat(sprintf("SCRAPI2 for that day (its Week-26 total): %d   hand: %.0f\n", wk["26"], hand_one))
+cat(sprintf("SCRAPI2 Week %d total: %d   hand sum: %.0f\n", wsel, wk[as.character(wsel)], hand_week))
 cat(sprintf("SCRAPI2 total smolts: %d   sum of hand daily expansions: %.0f\n", gt, hand_tot))
-stopifnot(wk["26"] == round(hand_one), abs(gt - hand_tot) <= 1)
+stopifnot(wk[as.character(wsel)] == round(hand_week), abs(gt - hand_tot) <= 1)
 
 png("figs/session07_real_data_scrapi.png", width = 900, height = 600)
-plot(hand_day, type = "h", lwd = 3, col = "grey70", xlab = "passage day (MY2025)",
-     ylab = "hand-expanded fish", main = "Session 7: real daily expansions, summing to the SCRAPI2 total")
+cols <- rep("grey75", nrow(pass)); cols[wk_rows] <- "steelblue"
+plot(hand_day, type = "h", lwd = 4, col = cols, xlab = "passage day (MY2025)",
+     ylab = "hand-expanded fish",
+     main = "Session 7: real daily expansions; one week summed to the SCRAPI2 total")
 points(sel, hand_one, pch = 19, col = "firebrick")
-legend("topright", sprintf("total = %.0f = SCRAPI2's %d", hand_tot, gt), bty = "n")
+legend("topright", bty = "n", col = c("steelblue", "firebrick"), pch = c(15, 19),
+       legend = c(sprintf("Week %d days: sum %.0f = SCRAPI2's %d", wsel, hand_week, wk[as.character(wsel)]),
+                  sprintf("chosen day %s = %.0f", pass$SampleEndDate[sel], hand_one)))
 dev.off()
 
-# Exercise. Swap Primary = "GenStock" for RTYPE = "HNC" and rerun; the same daily
-# expansion feeds a different composition split. Say out loud why the expansion
-# step is shared while only the composition step downstream of it changes.
+# Exercise. Swap RTYPE = "W" for RTYPE = "HNC" and rerun; the same daily expansion
+# feeds a different composition split. Say out loud why the expansion step is
+# shared while only the composition step downstream of it changes.
 
 # Locate.
 # smoltEASE (smolts): SCRAPI2() in R/SCRAPI2.R forms pass$estimated <- SampleCount /
-#   (SampleRate * GuidanceEfficiency) and sums it by week and stratum; that is the
-#   exact hand_day formula above, run over all 61 days. Everything else SCRAPI2 does
-#   (composition, wild split, bootstrap CI) sits on top of this one expansion.
+#   (SampleRate * GuidanceEfficiency) at line 306, the exact hand_day formula, and
+#   prints round(tapply(pass$estimated, Week, sum)) at line 325. Matching the hand
+#   sum to that print is re-running the same arithmetic, not a second estimator.
 # escapeLGD (adults): the analogue is expand_wc_binom_night(), round(wc / wc_prop)
 #   summed over statistical weeks; same divide-by-the-fraction-seen move on the
 #   adult window count, with nighttime passage standing in for guidance efficiency.
@@ -66,17 +79,21 @@ dev.off()
 writeLines(c(
 "How I would explain session 7 in three minutes",
 "",
-sprintf("Every number in the talk so far was simulated. This one is not: it is the real"),
-sprintf("MY2025 steelhead run, %d days of trap counts and %d fish. Production SCRAPI2 is a",
-        nrow(pass), nrow(read.csv("data/MY2025_STHD_trapData.csv"))),
-"large program, but on any single day it does exactly what session 1 did: take the",
-sprintf("count and divide by the fraction seen. On %s that is %d fish counted at a %.0f%%",
-        pass$SampleEndDate[sel], pass$SampleCount[sel], 100 * pass$SampleRate[sel]),
-sprintf("sample rate and %.0f%% guidance, giving %.0f fish, and SCRAPI2 reports the same %d.",
-        100 * pass$GuidanceEfficiency[sel], hand_one, wk["26"]),
+"Every number in the talk so far was simulated. This one is not: it is the real",
+sprintf("MY2025 steelhead run, %d days of trap counts and %d fish. Be clear about what this", nrow(pass), ntrap),
+"shows and what it does not: we did not independently verify SCRAPI2. We cannot, by",
+"hand. What we can show is that the weekly number SCRAPI2 prints is nothing more",
+"than the plug-in expansion, summed.",
 "",
-sprintf("Do that for every day and the daily expansions sum to %.0f, which is exactly the", hand_tot),
-sprintf("total smolts SCRAPI2 prints, %d. The whole production run is that one move applied", gt),
-"day after day and then split into groups. Anyone in the room can check the day I",
-"picked with a calculator, and that is the point: the machine has no magic in it."
+sprintf("Take %s: %d fish counted at a %.0f%% sample rate and %.0f%% guidance is that count",
+        pass$SampleEndDate[sel], pass$SampleCount[sel], 100 * pass$SampleRate[sel],
+        100 * pass$GuidanceEfficiency[sel]),
+sprintf("over the fraction seen, about %.0f fish. Its week has %d days; add their expansions",
+        hand_one, length(wk_rows)),
+sprintf("and you get %.0f. SCRAPI2 prints exactly %d for Week %d, because line for line it is",
+        hand_week, wk[as.character(wsel)], wsel),
+"the same division summed the same way: count over sample rate times guidance,",
+"summed by week and rounded (SCRAPI2.R line 306, printed at line 325). There is no",
+"separate model doing the counting and no magic in the machine; the whole run is",
+"this one division, repeated day after day and then grouped."
 ), "docs/session07_explain.md")

@@ -33,6 +33,8 @@ each item with one line saying why it was cut. Nothing was deleted.
 
 ## Ground rules
 
-Toy sessions stay near a screen (about 80 lines); the two real/production
-sessions run longer. No session over a minute to run. No banner comments. No
-placeholder headings. No dates — those get added by hand.
+Each session teaches one idea and one idea only: simulate, build the estimator by
+hand, recover against truth, one figure, Locate. A second figure means a second
+session. Single-use helpers are inlined; no defensive input checking, since these
+are teaching scripts, not package code. No session over a minute to run. No banner
+comments. No placeholder headings. No dates — those get added by hand.

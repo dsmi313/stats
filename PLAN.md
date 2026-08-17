@@ -227,9 +227,13 @@ this session selects and finishes figures already produced.
 
 ## Rules this repository holds itself to
 
-- Scripts stay short — about a screen, near 80 lines for the toy sessions — and
-  none takes more than a minute to run. The two real/production sessions (7 and 8)
-  run longer because they carry two full estimators or a production call.
+- Each session teaches one idea and one idea only: simulate from a known truth,
+  build the estimator by hand, recover it against that truth, show it in one
+  figure, and Locate it in the two production sources. If a session needs a second
+  figure to make its point, it is two sessions.
+- If a helper function is used once, inline it. No defensive input checking —
+  these are teaching scripts, not package code.
+- No script takes more than a minute to run.
 - No new session is added without deleting one. Tangents go to `BACKLOG.md`.
 - No banner comments (no `# =====`, no `# -----`). Plain comments only.
 - Every heading in every markdown file has real text. No empty or placeholder
