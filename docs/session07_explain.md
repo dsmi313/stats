@@ -1,12 +1,15 @@
 How I would explain session 7 in three minutes
 
 Every number in the talk so far was simulated. This one is not: it is the real
-MY2025 steelhead run, 61 days of trap counts and 1074 fish. Production SCRAPI2 is a
-large program, but on any single day it does exactly what session 1 did: take the
-count and divide by the fraction seen. On 06/27/2025 that is 1 fish counted at a 10%
-sample rate and 31% guidance, giving 32 fish, and SCRAPI2 reports the same 32.
+MY2025 steelhead run, 61 days of trap counts and 1074 fish. Be clear about what this
+shows and what it does not: we did not independently verify SCRAPI2. We cannot, by
+hand. What we can show is that the weekly number SCRAPI2 prints is nothing more
+than the plug-in expansion, summed.
 
-Do that for every day and the daily expansions sum to 164795, which is exactly the
-total smolts SCRAPI2 prints, 164795. The whole production run is that one move applied
-day after day and then split into groups. Anyone in the room can check the day I
-picked with a calculator, and that is the point: the machine has no magic in it.
+Take 05/12/2025: 88 fish counted at a 5% sample rate and 18% guidance is that count
+over the fraction seen, about 9888 fish. Its week has 5 days; add their expansions
+and you get 47444. SCRAPI2 prints exactly 47444 for Week 20, because line for line it is
+the same division summed the same way: count over sample rate times guidance,
+summed by week and rounded (SCRAPI2.R line 306, printed at line 325). There is no
+separate model doing the counting and no magic in the machine; the whole run is
+this one division, repeated day after day and then grouped.
