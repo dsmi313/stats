@@ -8,8 +8,9 @@ escapement estimation at Lower Granite: adults and smolts, one framework."*
 Nine self-contained R sessions that reverse engineer the two production
 escapement tools at Lower Granite Dam — `escapeLGD` (EASE, adults) and
 `smoltEASE` (SCRAPI2, smolts) — treating them as one estimator structure applied
-at two life stages. Each session writes a toy version by hand, then points at
-the exact production file and function that does the same job.
+at two life stages. Most sessions write a toy version by hand, then point at the
+exact production file and function that does the same job; session 7 instead runs
+production `SCRAPI2()` on the real MY2025 inputs and checks it by hand.
 
 ## Where to start
 
@@ -21,8 +22,9 @@ the exact production file and function that does the same job.
    (`source("R/session01_count_expansion.R")`); each prints its recovery, writes
    a figure to `figs/`, and writes a plain-English explanation to
    `docs/sessionNN_explain.md`. Session 2 also writes the skeleton table to
-   `docs/session02_shared_skeleton.md`. Base R throughout; only session 6 uses an
-   extra package (`glmmTMB`, with a `glm` fallback).
+   `docs/session02_shared_skeleton.md`. Base R throughout, with two exceptions:
+   session 5 uses `glmmTMB` (with a `glm` fallback), and session 7 requires the
+   `smoltEASE` package because it runs production `SCRAPI2()` on the real data.
 
 ## What is not here
 
@@ -31,6 +33,6 @@ each item with one line saying why it was cut. Nothing was deleted.
 
 ## Ground rules
 
-No script over 80 lines or over a minute to run. No banner comments. No
+Toy sessions stay near a screen (about 80 lines); the two real/production
+sessions run longer. No session over a minute to run. No banner comments. No
 placeholder headings. No dates — those get added by hand.
-</content>

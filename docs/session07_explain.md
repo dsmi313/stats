@@ -1,13 +1,12 @@
 How I would explain session 7 in three minutes
 
-When a number we need, like guidance efficiency, is uncertain, we do not want a
-single plugged-in value; we want to account for every value it might take,
-weighted by how likely each is. Written as math that is an integral, and it can
-look intimidating.
+Every number in the talk so far was simulated. This one is not: it is the real
+MY2025 steelhead run, 61 days of trap counts and 1074 fish. Production SCRAPI2 is a
+large program, but on any single day it does exactly what session 1 did: take the
+count and divide by the fraction seen. On 06/27/2025 that is 1 fish counted at a 10%
+sample rate and 31% guidance, giving 32 fish, and SCRAPI2 reports the same 32.
 
-There is a shortcut that gives the identical answer. Draw a few thousand values
-of the uncertain number from its range, run the escapement calculation once for
-each, and look at the spread of results. The average lands on the integral and
-the middle band is the honest interval. That is all the bootstrap loop is doing
-when it reads one guidance-efficiency draw and one stock draw per pass: it is
-integrating out our uncertainty by drawing, not by calculus.
+Do that for every day and the daily expansions sum to 164795, which is exactly the
+total smolts SCRAPI2 prints, 164795. The whole production run is that one move applied
+day after day and then split into groups. Anyone in the room can check the day I
+picked with a calculator, and that is the point: the machine has no magic in it.

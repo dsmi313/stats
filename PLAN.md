@@ -64,9 +64,12 @@ one concept to a colleague in three minutes, in plain English, with no notation.
 ## The nine sessions
 
 The sequence is centered on likelihood profiling. Sessions 1 and 2 lay the
-generic skeleton; sessions 3 and 4 are the profiling core; sessions 5 through 8
-are the four ways uncertainty becomes an interval and what those intervals
-actually claim; session 9 assembles the talk.
+generic skeleton; sessions 3 and 4 are the profiling core, with session 3 also
+reading the four interval recipes off one rate; session 5 fits guidance
+efficiency two ways and session 6 asks whether the composed interval covers what
+it claims; session 7 grounds the whole machine in the real MY2025 run; session 8
+is the sharpest adult/smolt divergence, composition by likelihood versus
+accounting; session 9 assembles the talk.
 
 ### Session 1 — One count, expanded, by likelihood
 
@@ -100,18 +103,26 @@ Every uncertainty source each tool propagates is listed with its mechanism
 source one propagates while the other does not is flagged. Written to
 `docs/session02_shared_skeleton.md`. This table is the spine of the talk.
 
-### Session 3 — Profile likelihood
+### Session 3 — Profile likelihood, and four intervals off one curve
 
 **Objective:** explain how an interval falls out of the shape of the likelihood
-curve for one parameter, without any normal approximation.
+curve for one parameter, without any normal approximation, and what each of the
+four interval recipes means when all four are read off that same rate.
 
 Plot the log-likelihood curve for one parameter, drop the line where twice the
 log-likelihood falls by the chi-squared cutoff, and read the interval off the
-curve.
+curve. On the same rate, compute the other three intervals too — delta method,
+bootstrap percentile, Bayesian credible — and show they nearly coincide here and
+where they would part. This session absorbs the old standalone four-intervals
+session; the profile curve stays as its figure.
 
-**Locate:** the single-parameter binomial rate inside `escapeLGD`
-`nightFall()` (nighttime passage, `p_night`) and the fallback rate `p_fa`; the
-per-rate resampling in `smoltEASE` `SCRAPI2()`.
+**Locate:** the single-parameter binomial rate inside `escapeLGD` `nightFall()`
+(nighttime passage, `p_night`) and the fallback rate `p_fa`; the per-rate
+resampling in `smoltEASE` `SCRAPI2()`. The bootstrap percentile is the interval
+both production tools actually ship (`quantile()` on the bootstrap matrix in
+`SCRAPI2()` and in `apply_fallback_rates()`); the profile and delta intervals are
+what the by-hand likelihood work implies; the Bayesian credible interval is what
+`smoltEASE` `fit_ge_model()` produces for GE, the interval session 5 fits.
 
 ### Session 4 — Profile versus marginalize a nuisance parameter
 
@@ -122,31 +133,16 @@ Fit the two-parameter joint likelihood surface, then on one figure show the
 profile trace for the parameter of interest against the marginalized curve.
 The production anchor is exact: `escapeLGD`'s fallback likelihood is literally a
 two-parameter binomial likelihood in P(fallback) and the nuisance P(reascend |
-fallback). Sessions 3 and 4 both point at this one function; keeping them
-separate holds each script inside the 80-line and one-minute budget while
-staying teachable, which is why the plan is nine sessions rather than folding
-the surface into session 3 for eight.
+fallback). This is the one place the profiling core touches escapeLGD's own
+two-parameter machinery, and it is one of the three genuine adult/smolt
+divergences, since smolts have no reascension likelihood at all.
 
 **Locate:** `escapeLGD` `fallback_log_likelihood()` and
 `gradient_fallback_log_likelihood()` in `R/fallback_reascend_likelihood.R`,
 optimized in `nightFall()`; `smoltEASE` has no two-parameter reascension
 likelihood, which is itself a point the talk makes.
 
-### Session 5 — Four intervals for one parameter
-
-**Objective:** explain what each of the four intervals means and why they agree
-here and can disagree elsewhere.
-
-One parameter, one plot, four intervals: delta method, profile likelihood,
-bootstrap percentile, and Bayesian credible.
-
-**Locate:** bootstrap percentile is the interval both production tools actually
-ship (`quantile()` on the bootstrap matrix in `SCRAPI2()` and in
-`apply_fallback_rates()`); the profile and delta intervals are what the
-by-hand likelihood work implies; the Bayesian credible interval is what
-`smoltEASE` `fit_ge_model()` produces for GE.
-
-### Session 6 — Guidance efficiency fit both ways
+### Session 5 — Guidance efficiency fit both ways
 
 **Objective:** explain what guidance efficiency is, why it needs its own model,
 and what fitting it by maximum likelihood versus Bayesian buys and costs.
@@ -155,7 +151,8 @@ Fit the GE relationship both ways on simulated data with known truth: maximum
 likelihood in `glmmTMB` and Bayesian by hand. Simulate-only, so the truth stays
 known and the two fits can be judged against it; the truth values are drawn to
 look like the real MY2025 GE-versus-spill shape (see `data/`) without the script
-depending on the data to run.
+depending on the data to run. The exercise pushes the fit to a separation case
+where maximum likelihood diverges and only the prior keeps it finite.
 
 **Locate:** `smoltEASE` `fit_ge_model()` (JAGS multistate mark-recapture for the
 route-selection probability) and `prep_ge_data()` in `R/fit_ge_model.R` and
@@ -163,22 +160,7 @@ route-selection probability) and `prep_ge_data()` in `R/fit_ge_model.R` and
 the structurally analogous role and is estimated as a plain binomial rate in
 `nightFall()`.
 
-### Session 7 — Monte Carlo marginalization
-
-**Objective:** explain how drawing posterior values and pushing each through the
-escapement calculation is the same thing as integrating the nuisance parameter
-out, demonstrated numerically.
-
-Find the loop in `smoltEASE` that draws GE and GSI posterior values and pushes
-them through the escapement calculation, and show numerically that it equals the
-integral from session 4. Do the same for whatever `escapeLGD` draws or resamples.
-
-**Locate:** `smoltEASE` `SCRAPI2()` bootstrap loop, where `ge_day_mat[, b]` and
-the per-iteration GSI draw column enter `thetahat()`, fed by
-`generate_ge_draws()` and `sim_gsi_draws()`; `escapeLGD` `HNC_expand_unkGSI()`
-(GSI posterior draw columns) and the binomial resampling in `nightFall()`.
-
-### Session 8 — What the composed interval actually claims
+### Session 6 — What the composed interval actually claims
 
 **Objective:** explain what the SCRAPI2 interval claims to cover and whether a
 simulation says it delivers that coverage, and how the adult interval compares.
@@ -186,12 +168,54 @@ simulation says it delivers that coverage, and how the adult interval compares.
 The SCRAPI2 interval is composed of a nonparametric bootstrap stacked on
 posterior draws of GE and GSI. State what that composed interval claims, then
 run a simulation study to check whether it has the coverage the claim implies.
-Do the same for the adult interval from `escapeLGD` and compare.
+Do the same for the adult interval from `escapeLGD` and compare. The Monte Carlo
+identity — that drawing a posterior value and pushing it through the calculation
+is integrating the nuisance out — is used here rather than given its own session.
 
 **Locate:** `smoltEASE` `SCRAPI2()` CI construction (`quantile(theta.b, ...)`
-over a bootstrap that folds in GE and GSI draws); `escapeLGD`
-`apply_fallback_rates()` CI construction (`quantile()` over composition
-bootstrap times fallback bootstrap).
+over a bootstrap that folds in GE and GSI draws, where `ge_day_mat[, b]` enters
+`thetahat()`); `escapeLGD` `apply_fallback_rates()` CI construction (`quantile()`
+over composition bootstrap times fallback bootstrap) and `HNC_expand_unkGSI()`
+GSI posterior draw columns.
+
+### Session 7 — The real run, checked by hand
+
+**Objective:** explain that the whole smolt machine is the session-1 move applied
+to real inputs, by expanding one real day by hand and watching production
+reproduce it and the run total.
+
+No simulation. Read the real MY2025 steelhead files in `data/` and run production
+`smoltEASE::SCRAPI2()` on them with fixed guidance efficiency and a bootstrap size
+cut well below the 5000 default for runtime. Pick one day, expand it by hand as
+Tally / (SampleRate × GuidanceEfficiency), and show that hand number reproduces
+what SCRAPI2 reports for that day, and that the daily expansions sum to the total
+SCRAPI2 prints. Same move as session 1, real inputs, checkable with a calculator.
+
+**Locate:** `smoltEASE` `SCRAPI2()` in `R/SCRAPI2.R`, where `pass$estimated` is
+`SampleCount / (SampleRate * GuidanceEfficiency)` summed by week and stratum;
+`escapeLGD` `expand_wc_binom_night()`, `round(wc / wc_prop)` summed by week.
+
+### Session 8 — Composition two ways, accounting versus likelihood
+
+**Objective:** explain why splitting an expanded total into origin groups can be
+done by bookkeeping or by a likelihood, why the two agree on the point estimate,
+and why only the likelihood tells you honestly what an imperfect PBT tag rate
+costs your certainty. This is the sharpest adult/smolt divergence and nothing
+else in the talk demonstrates it.
+
+Simulate a stratum with known origin composition and known PBT tag rates. Estimate
+the proportions both ways — the accounting expansion and the multinomial MLE — show
+the point estimates coincide because accounting is the interior MLE, then profile
+the likelihood over the wild fraction and show its interval widens as the tag rate
+worsens, an honesty about uncertainty the single accounting number cannot express.
+
+**Locate:** `escapeLGD` `HNC_expand_unkGSI()` in `R/wrappers_HNC_expand.R`, which
+takes `method = c("Account", "MLE")` and branches to `HNC_expand_one_strat()` or
+`HNC_expand_one_strat_MLE()`; the MLE path runs `PBT_expand_calc_MLE()` in
+`R/composition_estimation_utils.R` (multinomial over softmax proportions, analytic
+gradient, optim BFGS) and the accounting path `PBT_expand_calc()`. `smoltEASE` has
+no likelihood path; `thetahat()` in `R/SCRAPI2.R` does inverse-sample-rate
+weighting and `prop.table` only.
 
 ### Session 9 — Talk assembly
 
@@ -203,7 +227,9 @@ this session selects and finishes figures already produced.
 
 ## Rules this repository holds itself to
 
-- No script longer than 80 lines. No script that takes more than a minute to run.
+- Scripts stay short — about a screen, near 80 lines for the toy sessions — and
+  none takes more than a minute to run. The two real/production sessions (7 and 8)
+  run longer because they carry two full estimators or a production call.
 - No new session is added without deleting one. Tangents go to `BACKLOG.md`.
 - No banner comments (no `# =====`, no `# -----`). Plain comments only.
 - Every heading in every markdown file has real text. No empty or placeholder
@@ -221,7 +247,6 @@ this session selects and finishes figures already produced.
   session writes.
 - `docs/session02_shared_skeleton.md` — the component-by-component comparison
   table.
-- `data/` — real MY2025 steelhead inputs, kept as the reference shapes the
-  simulations imitate. No session depends on them to run; see `data/README.md`.
-</content>
-</invoke>
+- `data/` — real MY2025 steelhead inputs, both the reference shapes the
+  simulations imitate and the actual inputs session 7 runs `SCRAPI2()` on; see
+  `data/README.md`.

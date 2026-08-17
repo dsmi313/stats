@@ -1,4 +1,4 @@
-# Session 6: guidance efficiency fit both ways
+# Session 5: guidance efficiency fit both ways
 # Objective: explain what guidance efficiency is, why it needs its own model, and
 # what fitting it by maximum likelihood versus Bayesian buys and costs.
 
@@ -42,18 +42,20 @@ cat(sprintf("ML    alpha %.2f [%.2f, %.2f]  beta %.2f [%.2f, %.2f]\n",
 cat(sprintf("Bayes alpha %.2f [%.2f, %.2f]  beta %.2f [%.2f, %.2f]\n",
             bayes$est[1], bayes$lo[1], bayes$hi[1], bayes$est[2], bayes$lo[2], bayes$hi[2]))
 
-png("figs/session06_ge_fit_both_ways.png", width = 900, height = 600)
+png("figs/session05_ge_fit_both_ways.png", width = 900, height = 600)
 xs <- seq(min(spill_std), max(spill_std), length.out = 100)
 plot(spill_std, y / nsz, pch = 19, ylim = c(0, 1), xlab = "standardized spill",
-     ylab = "guidance efficiency", main = "Session 6: GE fit by ML and Bayesian")
+     ylab = "guidance efficiency", main = "Session 5: GE fit by ML and Bayesian")
 lines(xs, plogis(truth$alpha + truth$beta * xs), col = "firebrick", lwd = 3)
 lines(xs, plogis(ml$est[1] + ml$est[2] * xs), col = "black", lwd = 2, lty = 2)
 lines(xs, plogis(bayes$est[1] + bayes$est[2] * xs), col = "darkorange", lwd = 2, lty = 3)
 legend("topright", c("truth", "ML", "Bayes"), lwd = c(3, 2, 2), lty = c(1, 2, 3), col = c("firebrick", "black", "darkorange"), bty = "n")
 dev.off()
 
-# Exercise. Cut n_strata to 4 and rerun: the ML slope interval balloons or fails
-# to converge while the Bayesian one stays finite; say what the prior costs.
+# Exercise. Set n_strata = 5L and n_tag = 2L and rerun. With two tags a stratum the
+# counts (2,2,1,0,0) separate perfectly along spill: the ML slope runs off to
+# beta = -33.7 with SE = 161087 (glmmTMB warns), a useless interval, while the prior
+# keeps the Bayesian slope finite near -5.9, 95% [-13.3, -1.7]. Say what that buys.
 
 # Locate.
 # smoltEASE (smolts): fit_ge_model() in R/fit_ge_model.R fits this for real as a
@@ -65,16 +67,19 @@ dev.off()
 #   route into. The analogue, nighttime passage, is a plain binomial rate in
 #   nightFall(), not a fitted curve.
 
+wml <- ml$hi[2] - ml$lo[2]; wbayes <- bayes$hi[2] - bayes$lo[2]
+agree <- if (abs(ml$est[2] - bayes$est[2]) < 0.1) "land on essentially the same slope" else "disagree on the slope"
 writeLines(c(
-"How I would explain session 6 in three minutes",
+"How I would explain session 5 in three minutes",
 "",
 "Guidance efficiency is the share of smolts taking the bypass route where the trap",
 "can sample them. It changes with spill, and under heavy spill it is both low and",
 "hard to pin down, so we cannot plug in one number; it needs its own model.",
 "",
 "We can fit that model two ways. Maximum likelihood finds the single best curve and",
-"a range from its curvature; it is fast but shaky with only a handful of weeks. The",
-"Bayesian fit adds a mild prior that keeps the answer sensible when data are thin",
-"and hands us a full range of plausible curves. The production smolt model is the",
-"Bayesian one, for that thin-data reason."
-), "docs/session06_explain.md")
+sprintf("a range from its curvature; here it recovers the spill slope %.2f against a truth", ml$est[2]),
+sprintf("of %.2f. The Bayesian fit adds a mild prior; here it gives %.2f. On this run the", truth$beta, bayes$est[2]),
+sprintf("two %s, with slope intervals %.2f and %.2f wide. The prior earns its keep", agree, wml, wbayes),
+"only when data are thin enough to separate; the production smolt model is Bayesian",
+"for exactly that thin-data reason."
+), "docs/session05_explain.md")

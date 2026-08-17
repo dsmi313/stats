@@ -1,10 +1,10 @@
 # Data
 
-Real MY2025 steelhead inputs from Lower Granite Dam, kept here as the reference
-shapes the simulations are tuned to look like. No session script depends on
-these files to run; every session generates its own data from a known truth set
-at the top of the script. These are here so the simulated truths are realistic
-and so the production pipelines can be pointed at real inputs by hand later.
+Real MY2025 steelhead inputs from Lower Granite Dam. The simulate-and-recover
+sessions are tuned to look like these shapes but generate their own data from a
+known truth at the top of each script, so they do not read these files. Session 7
+is the exception: it runs production `smoltEASE::SCRAPI2()` on the two MY2025 CSVs
+below and checks the result by hand, so those two files are load-bearing for it.
 
 ## Files
 
@@ -25,6 +25,5 @@ and so the production pipelines can be pointed at real inputs by hand later.
 
 The PIT tag detection extract (spillway GRS and Little Goose GOJ detections)
 that feeds `prep_ge_data()` as `dat_up` was shown but not provided as a complete
-file. Session 6 is simulate-only and does not need it; add the full extract here
-if a real GE fit is wanted later.
-</content>
+file. Session 5, the guidance-efficiency fit, is simulate-only and does not need
+it; add the full extract here if a real GE fit is wanted later.

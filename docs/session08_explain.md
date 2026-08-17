@@ -1,14 +1,15 @@
 How I would explain session 8 in three minutes
 
-Our escapement range is built by two moves stacked together: resample the catch,
-and draw guidance efficiency from its model. We call it a 90 percent interval, so
-the fair test is to invent a world where we know the true answer, run the whole
-machine hundreds of times, and count how often the interval actually catches the
-truth. It should be 90 out of 100.
+Once we know the total run, we split it into origin groups using the PBT tags fish
+carry. The catch is that tags are imperfect: a hatchery fish whose tag failed looks
+exactly like a wild fish. There are two ways to undo that. The bookkeeping way
+expands each tagged group by one over its tag rate and calls whatever is left over
+wild. The likelihood way writes down the chance of every observed call and finds
+the composition that makes the data most likely.
 
-When the guidance-efficiency model is centered correctly, it is. When that model
-is biased even ten percent, the interval still looks tight and confident but
-lands in the wrong place, and coverage falls well short. The adult interval leans
-on a resampled rate instead of a fitted model, so it cannot be thrown off that
-particular way. The lesson: a composed interval is only as honest as the model
-feeding it, and we should say so out loud when we quote one.
+On the point estimate they agree here to within 0.000, because the bookkeeping is
+the likelihood answer whenever nothing hits a boundary. The difference is honesty
+about certainty. With the real, poor tag rates the likelihood's wild-fraction
+interval is 0.24 wide; give the same fish near-perfect tags and it shrinks to 0.09.
+The single accounting number cannot tell you that a low tag rate has made the split
+much less certain. Adults have this likelihood path; smolts only keep the books.

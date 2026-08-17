@@ -1,4 +1,4 @@
-# Session 8: what the composed interval actually claims
+# Session 6: what the composed interval actually claims
 # Objective: explain what the SCRAPI2 interval claims to cover and whether a
 # simulation says it delivers, and how the adult interval compares.
 
@@ -35,9 +35,9 @@ res <- c(
   "adult night (bootstrap)" = run_cov(function(B, dt) { ph <- rbinom(1, 250, dt) / 250; rbinom(B, 250, ph) / 250 }))
 print(round(res, 3))
 
-png("figs/session08_interval_coverage.png", width = 900, height = 600)
+png("figs/session06_interval_coverage.png", width = 900, height = 600)
 barplot(res, ylim = c(0, 1), col = "steelblue", las = 1, ylab = "coverage",
-        main = "Session 8: does the 90% interval cover 90%?")
+        main = "Session 6: does the 90% interval cover 90%?")
 abline(h = 0.90, col = "firebrick", lwd = 3)
 dev.off()
 
@@ -57,19 +57,22 @@ dev.off()
 #   posterior, so it cannot be miscentered by a model the way GE can; that is the
 #   practical difference the coverage bars show.
 
+cal <- res[[1]]; bia <- res[[2]]; adu <- res[[3]]
+drop <- 0.90 - bia
 writeLines(c(
-"How I would explain session 8 in three minutes",
+"How I would explain session 6 in three minutes",
 "",
 "Our escapement range is built by two moves stacked together: resample the catch,",
 "and draw guidance efficiency from its model. We call it a 90 percent interval, so",
 "the fair test is to invent a world where we know the true answer, run the whole",
 "machine hundreds of times, and count how often the interval actually catches the",
-"truth. It should be 90 out of 100.",
+"truth. It should catch it about 90 times in 100.",
 "",
-"When the guidance-efficiency model is centered correctly, it is. When that model",
-"is biased even ten percent, the interval still looks tight and confident but",
-"lands in the wrong place, and coverage falls well short. The adult interval leans",
-"on a resampled rate instead of a fitted model, so it cannot be thrown off that",
-"particular way. The lesson: a composed interval is only as honest as the model",
-"feeding it, and we should say so out loud when we quote one."
-), "docs/session08_explain.md")
+"When the guidance-efficiency model is centered correctly, it does: coverage here",
+sprintf("is %.0f percent. Bias the model up ten percent and it still looks tight and", 100 * cal),
+sprintf("confident but lands off-center, and coverage slips to %.0f percent, short of the", 100 * bia),
+sprintf("nominal by about %.0f points. The adult interval leans on a resampled rate rather", 100 * drop),
+sprintf("than a fitted model, so it cannot be miscentered that way and holds near %.0f. The", 100 * adu),
+"lesson: a composed interval is only as honest as the model feeding it, and we",
+"should say so out loud when we quote one."
+), "docs/session06_explain.md")

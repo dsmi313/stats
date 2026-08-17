@@ -3,10 +3,10 @@ How I would explain session 2 in three minutes
 Adults and smolts look like separate problems with separate software, but they
 are the same assembly line. Count the fish you can, divide by the fraction you
 saw, expand for the ones the count structurally misses, split the total into
-groups, and shake the whole thing to get a range. Line the two tools up row by
-row and almost every part matches.
+groups, and shake the whole thing to get a range. Lining the two tools up gives
+11 components; 7 of those match cleanly and only 4 carry a divergence marker.
 
-Three places do not match, and those are the talk. Smolts give guidance
+Those flagged rows collapse to three talk-level differences. Smolts give guidance
 efficiency a full statistical model and carry its uncertainty; adults treat the
 matching quantity, night passage, as a simple rate. Adults carry fallback and
 reascension, which smolts do not have. And adults can estimate composition by
