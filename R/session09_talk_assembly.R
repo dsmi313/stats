@@ -31,7 +31,7 @@ abline(v = ci, col = "steelblue", lwd = 2, lty = 3)
 
 # Panel 3: the coverage result. Does the 90% interval cover 90%? The true GE
 # varies run to run, so the calibrated interval sits near nominal and the biased
-# one under-covers (the session 8 engine, condensed).
+# one under-covers (the session 6 engine, condensed).
 cov <- function(mean_d) {
   N <- 6000; R <- 0.05; d0 <- 0.17; h <- logical(500)
   for (s in 1:500) {
@@ -42,11 +42,13 @@ cov <- function(mean_d) {
   }
   mean(h)
 }
-barplot(c(calibrated = cov(0.17), `biased +20%` = cov(0.204)), ylim = c(0, 1),
+covbars <- c(calibrated = cov(0.17), `biased +20%` = cov(0.204))
+barplot(covbars, ylim = c(0, 1),
         col = "steelblue", ylab = "coverage", main = "Does 90% cover 90%?")
 abline(h = 0.90, col = "firebrick", lwd = 3)
 dev.off()
-cat("talk figure written to figs/session09_talk_assembly.png\n")
+cat(sprintf("talk figure written; coverage calibrated %.2f vs biased %.2f\n",
+            covbars[1], covbars[2]))
 
 # Exercise. Rehearse the talk from these three panels alone, in order, spending
 # one minute on each. If a panel needs a sentence the figure does not support,
@@ -54,8 +56,9 @@ cat("talk figure written to figs/session09_talk_assembly.png\n")
 
 # Locate. This session is assembly, so its anchors are the sessions it draws from:
 # the skeleton (session 2, read from both sources), the profile (sessions 3 and 4,
-# the escapeLGD fallback likelihood), and coverage (session 8, the SCRAPI2 and
-# apply_fallback_rates CI construction). No new production code is touched.
+# the escapeLGD fallback likelihood), and coverage (session 6, the SCRAPI2 and
+# apply_fallback_rates CI construction). The real-data check (session 7) and the
+# composition divergence (session 8) stand behind it. No new production code here.
 
 writeLines(c(
 "How I would give the talk in three minutes",
@@ -69,8 +72,10 @@ writeLines(c(
 "The range is not decoration. It comes from the shape of the likelihood and from",
 "drawing our uncertainties through the calculation, which is the same as averaging",
 "over what we do not know. And when we quote a ninety percent interval, we owe it",
-"a check: does it actually cover ninety percent? It does when the guidance-",
-"efficiency model is centered right, and it fails, quietly and confidently, when",
-"that model is off. That is the whole talk: one framework, honest intervals, and",
-"knowing exactly what each interval claims."
+sprintf("a check: does it cover ninety percent? Panel three says it covers %.0f%% when the",
+        100 * covbars[1]),
+sprintf("guidance-efficiency model is centered right, and slips to %.0f%% when that model is",
+        100 * covbars[2]),
+"off by twenty percent, quietly and confidently. That is the whole talk: one",
+"framework, honest intervals, and knowing exactly what each interval claims."
 ), "docs/session09_explain.md")

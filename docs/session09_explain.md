@@ -9,7 +9,7 @@ life stages. Three parts genuinely differ, and naming them is most of the talk.
 The range is not decoration. It comes from the shape of the likelihood and from
 drawing our uncertainties through the calculation, which is the same as averaging
 over what we do not know. And when we quote a ninety percent interval, we owe it
-a check: does it actually cover ninety percent? It does when the guidance-
-efficiency model is centered right, and it fails, quietly and confidently, when
-that model is off. That is the whole talk: one framework, honest intervals, and
-knowing exactly what each interval claims.
+a check: does it cover ninety percent? Panel three says it covers 88% when the
+guidance-efficiency model is centered right, and slips to 71% when that model is
+off by twenty percent, quietly and confidently. That is the whole talk: one
+framework, honest intervals, and knowing exactly what each interval claims.

@@ -11,7 +11,7 @@ tbl <- c(
 "| Total count | window count wc (expand_wc_binom_night) | daily trap count Tally (thetahat in SCRAPI2) | same: a raw count at the dam |",
 "| Sampled fraction | wc_prop, counting-window open fraction | SampleRate, trap sample rate | parameterization: adults one term, smolts one of two |",
 "| Detection expansion | nighttime passage, 1/(1-p_night) (nightFall) | guidance efficiency, Ptrue = SampleRate * GE | STRUCTURAL: unseen night passage vs route selection into the bypass |",
-"| Count uncertainty | binomial bootstrap rbinom(boots, wc, wc_prop)/wc_prop | binomial bootstrap rbinom(1, est_daily, Ptrue) | same mechanism: parametric binomial bootstrap |",
+"| Count uncertainty | binomial bootstrap rbinom(boots, round(wc/wc_prop), wc_prop)/wc_prop | binomial bootstrap rbinom(1, est_daily, Ptrue) | same mechanism: parametric binomial bootstrap on the expanded count |",
 "| Composition estimator | PBT multinomial MLE via softmax optim, or accounting expansion | accounting only: inverse-SR weighting, prop.table (thetahat) | STRUCTURAL: adults have a likelihood path, smolts do not |",
 "| Composition uncertainty | nonparametric resample of trap fish per stratum (sample_n) | weighted resample per stratum, prob = SR | parameterization: unweighted vs sample-rate weighted |",
 "| Genetic stock (GSI) uncertainty | posterior draw columns, one per iter; point = mean of n_point (HNC_expand_unkGSI) | gsiDraws, one column per iter; point = mean of n_point (SCRAPI2) | SAME: smoltEASE deliberately copies the adult GSI format |",
@@ -41,6 +41,13 @@ md <- c("# The shared skeleton: one estimator, two life stages", "",
 writeLines(md, "docs/session02_shared_skeleton.md")
 cat(paste(tbl, collapse = "\n"), "\n")
 
+# Count, from the table itself, how many components line up and how many diverge.
+comp_rows <- tbl[-(1:2)]
+n_comp <- length(comp_rows)
+n_flag <- sum(grepl("STRUCTURAL|FLAG", comp_rows))
+cat(sprintf("components compared: %d | rows carrying a divergence marker: %d\n",
+            n_comp, n_flag))
+
 # Locate. This whole session is Locate: every cell names the real file and
 # function. Adults: night_fall_reascend_wc_binom.R, fallback_reascend_likelihood.R,
 # composition_estimation_utils.R, HNC_expand_one_strat.R, wrappers_HNC_expand.R,
@@ -53,10 +60,11 @@ writeLines(c(
 "Adults and smolts look like separate problems with separate software, but they",
 "are the same assembly line. Count the fish you can, divide by the fraction you",
 "saw, expand for the ones the count structurally misses, split the total into",
-"groups, and shake the whole thing to get a range. Line the two tools up row by",
-"row and almost every part matches.",
+sprintf("groups, and shake the whole thing to get a range. Lining the two tools up gives"),
+sprintf("%d components; %d of those match cleanly and only %d carry a divergence marker.",
+        n_comp, n_comp - n_flag, n_flag),
 "",
-"Three places do not match, and those are the talk. Smolts give guidance",
+"Those flagged rows collapse to three talk-level differences. Smolts give guidance",
 "efficiency a full statistical model and carry its uncertainty; adults treat the",
 "matching quantity, night passage, as a simple rate. Adults carry fallback and",
 "reascension, which smolts do not have. And adults can estimate composition by",

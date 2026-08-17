@@ -3,9 +3,9 @@
 # and integrating it out, and show they give nearly the same interval here.
 
 # This is escapeLGD's fallback likelihood exactly. Parameter of interest is
-# P(fallback); the nuisance is P(reascend | fallback).
-#   df, dfr  spillway: fell back, and of those later reascended
-#   dt, dr   ladder:   ascensions, and of those that were reascensions
+# P(fallback); the nuisance is P(reascend | fallback). df, dfr are spillway fish
+# that fell back and of those later reascended; dt, dr are ladder ascensions and
+# of those the ones that were reascensions.
 truth <- list(p_fallback = 0.08, p_reascend = 0.85, n_spill = 300L, n_ladder = 5000L)
 set.seed(4)
 
@@ -54,25 +54,28 @@ dev.off()
 
 # Locate.
 # escapeLGD (adults): fallback_log_likelihood() and its analytic
-#   gradient_fallback_log_likelihood() in R/fallback_reascend_likelihood.R are
-#   this exact two-parameter likelihood; nightFall() optimises it with optim
-#   (L-BFGS-B, fnscale = -1) and then bootstraps, which is Monte Carlo
-#   marginalization rather than the grid integral done here.
+#   gradient_fallback_log_likelihood() in R/fallback_reascend_likelihood.R are this
+#   exact two-parameter likelihood; nightFall() optimises it with optim and then
+#   bootstraps, which is Monte Carlo marginalization rather than the grid integral.
 # smoltEASE (smolts): has no two-parameter reascension likelihood at all, because
-#   smolts do not fall back and reascend. That absence is itself a talk point:
-#   the nuisance-parameter machinery lives only on the adult side.
+#   smolts do not fall back and reascend. That absence is itself a talk point.
 
+endgap <- max(abs(ci_prof - ci_marg))
+same <- if (endgap < 0.005) "almost the same interval" else "visibly different intervals"
 writeLines(c(
 "How I would explain session 4 in three minutes",
 "",
 "To estimate how many adults fall back over the dam, we also have to reckon with",
 "a second unknown we do not really care about: of those that fall back, how many",
-"climb the ladder again. That second number is a nuisance. There are two honest",
-"ways to deal with it.",
+"climb the ladder again. That second number is a nuisance, and there are two",
+"honest ways to deal with it.",
 "",
 "Profiling asks, for each fallback rate, the best-case nuisance value, and reads",
 "the answer off that best-case ridge. Marginalizing instead averages over every",
-"plausible nuisance value. Here the two give almost the same interval, so it does",
-"not matter which we quote. They only pull apart when the nuisance itself is",
-"barely known, and then averaging over our ignorance costs extra width, honestly."
+sprintf("plausible nuisance value. Here profiling gives [%.3f, %.3f] and marginalizing",
+        ci_prof[1], ci_prof[2]),
+sprintf("[%.3f, %.3f], their endpoints within %.3f of each other, so the two give %s",
+        ci_marg[1], ci_marg[2], endgap, same),
+"and it does not matter which we quote. They only pull apart when the nuisance",
+"itself is barely known, and then averaging over our ignorance costs extra width."
 ), "docs/session04_explain.md")

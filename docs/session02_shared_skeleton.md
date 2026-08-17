@@ -9,7 +9,7 @@ genuinely diverge.
 | Total count | window count wc (expand_wc_binom_night) | daily trap count Tally (thetahat in SCRAPI2) | same: a raw count at the dam |
 | Sampled fraction | wc_prop, counting-window open fraction | SampleRate, trap sample rate | parameterization: adults one term, smolts one of two |
 | Detection expansion | nighttime passage, 1/(1-p_night) (nightFall) | guidance efficiency, Ptrue = SampleRate * GE | STRUCTURAL: unseen night passage vs route selection into the bypass |
-| Count uncertainty | binomial bootstrap rbinom(boots, wc, wc_prop)/wc_prop | binomial bootstrap rbinom(1, est_daily, Ptrue) | same mechanism: parametric binomial bootstrap |
+| Count uncertainty | binomial bootstrap rbinom(boots, round(wc/wc_prop), wc_prop)/wc_prop | binomial bootstrap rbinom(1, est_daily, Ptrue) | same mechanism: parametric binomial bootstrap on the expanded count |
 | Composition estimator | PBT multinomial MLE via softmax optim, or accounting expansion | accounting only: inverse-SR weighting, prop.table (thetahat) | STRUCTURAL: adults have a likelihood path, smolts do not |
 | Composition uncertainty | nonparametric resample of trap fish per stratum (sample_n) | weighted resample per stratum, prob = SR | parameterization: unweighted vs sample-rate weighted |
 | Genetic stock (GSI) uncertainty | posterior draw columns, one per iter; point = mean of n_point (HNC_expand_unkGSI) | gsiDraws, one column per iter; point = mean of n_point (SCRAPI2) | SAME: smoltEASE deliberately copies the adult GSI format |
